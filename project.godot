@@ -10,10 +10,11 @@ config_version=5
 
 [application]
 
-config/name="New Game Project"
+config/name="NewProject1"
+config/version="0.0.1"
 run/main_scene="uid://155xx7s6y6ta"
 config/features=PackedStringArray("4.6", "Forward Plus")
-config/icon="res://icon.svg"
+config/icon="uid://4q335xxs2p"
 
 [display]
 
@@ -27,3 +28,4 @@ window/size/viewport_height=1080
 [rendering]
 
 rendering_device/driver.windows="d3d12"
+textures/vram_compression/import_etc2_astc=true
