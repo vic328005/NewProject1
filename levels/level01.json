@@ -1,8 +1,8 @@
 {
   "level_id": "level01",
-  "display_name": "环形关卡",
-  "grid_width": 4,
-  "grid_height": 4,
+  "display_name": "双环回廊",
+  "grid_width": 12,
+  "grid_height": 8,
   "beat_bpm": 120,
   "cells": [
     {
@@ -14,7 +14,7 @@
         "beat_interval": 2
       },
       "cargo": {
-        "type": "CARGO_1"
+        "type": "CARGO_3"
       }
     },
     {
@@ -40,24 +40,204 @@
       "y": 0,
       "belt": {
         "facing": "RIGHT",
+        "turn_mode": "STRAIGHT",
+        "beat_interval": 2
+      }
+    },
+    {
+      "x": 4,
+      "y": 0,
+      "belt": {
+        "facing": "RIGHT",
+        "turn_mode": "STRAIGHT",
+        "beat_interval": 2
+      }
+    },
+    {
+      "x": 5,
+      "y": 0,
+      "belt": {
+        "facing": "RIGHT",
+        "turn_mode": "STRAIGHT",
+        "beat_interval": 2
+      }
+    },
+    {
+      "x": 6,
+      "y": 0,
+      "belt": {
+        "facing": "RIGHT",
+        "turn_mode": "STRAIGHT",
+        "beat_interval": 2
+      }
+    },
+    {
+      "x": 7,
+      "y": 0,
+      "belt": {
+        "facing": "RIGHT",
+        "turn_mode": "STRAIGHT",
+        "beat_interval": 2
+      }
+    },
+    {
+      "x": 8,
+      "y": 0,
+      "belt": {
+        "facing": "RIGHT",
+        "turn_mode": "STRAIGHT",
+        "beat_interval": 2
+      }
+    },
+    {
+      "x": 9,
+      "y": 0,
+      "belt": {
+        "facing": "RIGHT",
+        "turn_mode": "STRAIGHT",
+        "beat_interval": 2
+      }
+    },
+    {
+      "x": 10,
+      "y": 0,
+      "belt": {
+        "facing": "RIGHT",
+        "turn_mode": "STRAIGHT",
+        "beat_interval": 2
+      }
+    },
+    {
+      "x": 11,
+      "y": 0,
+      "belt": {
+        "facing": "RIGHT",
         "turn_mode": "RIGHT",
         "beat_interval": 2
+      }
+    },
+    {
+      "x": 0,
+      "y": 1,
+      "belt": {
+        "facing": "UP",
+        "turn_mode": "STRAIGHT",
+        "beat_interval": 2
+      }
+    },
+    {
+      "x": 2,
+      "y": 1,
+      "belt": {
+        "facing": "LEFT",
+        "turn_mode": "LEFT",
+        "beat_interval": 1
       }
     },
     {
       "x": 3,
       "y": 1,
       "belt": {
-        "facing": "DOWN",
+        "facing": "LEFT",
         "turn_mode": "STRAIGHT",
-        "beat_interval": 2
+        "beat_interval": 1
+      }
+    },
+    {
+      "x": 4,
+      "y": 1,
+      "belt": {
+        "facing": "LEFT",
+        "turn_mode": "STRAIGHT",
+        "beat_interval": 1
+      }
+    },
+    {
+      "x": 5,
+      "y": 1,
+      "belt": {
+        "facing": "LEFT",
+        "turn_mode": "STRAIGHT",
+        "beat_interval": 1
+      }
+    },
+    {
+      "x": 6,
+      "y": 1,
+      "belt": {
+        "facing": "LEFT",
+        "turn_mode": "STRAIGHT",
+        "beat_interval": 1
+      }
+    },
+    {
+      "x": 7,
+      "y": 1,
+      "belt": {
+        "facing": "LEFT",
+        "turn_mode": "STRAIGHT",
+        "beat_interval": 1
+      }
+    },
+    {
+      "x": 8,
+      "y": 1,
+      "belt": {
+        "facing": "LEFT",
+        "turn_mode": "STRAIGHT",
+        "beat_interval": 1
+      }
+    },
+    {
+      "x": 9,
+      "y": 1,
+      "belt": {
+        "facing": "UP",
+        "turn_mode": "LEFT",
+        "beat_interval": 1
       },
       "cargo": {
         "type": "CARGO_2"
       }
     },
     {
-      "x": 3,
+      "x": 11,
+      "y": 1,
+      "belt": {
+        "facing": "DOWN",
+        "turn_mode": "STRAIGHT",
+        "beat_interval": 2
+      }
+    },
+    {
+      "x": 0,
+      "y": 2,
+      "belt": {
+        "facing": "UP",
+        "turn_mode": "STRAIGHT",
+        "beat_interval": 2
+      }
+    },
+    {
+      "x": 2,
+      "y": 2,
+      "belt": {
+        "facing": "DOWN",
+        "turn_mode": "STRAIGHT",
+        "beat_interval": 1
+      }
+    },
+    {
+      "x": 9,
+      "y": 2,
+      "belt": {
+        "facing": "UP",
+        "turn_mode": "STRAIGHT",
+        "beat_interval": 1
+      }
+    },
+    {
+      "x": 11,
       "y": 2,
       "belt": {
         "facing": "DOWN",
@@ -66,11 +246,11 @@
       }
     },
     {
-      "x": 3,
+      "x": 0,
       "y": 3,
       "belt": {
-        "facing": "DOWN",
-        "turn_mode": "RIGHT",
+        "facing": "UP",
+        "turn_mode": "STRAIGHT",
         "beat_interval": 2
       }
     },
@@ -78,26 +258,272 @@
       "x": 2,
       "y": 3,
       "belt": {
-        "facing": "LEFT",
+        "facing": "DOWN",
         "turn_mode": "STRAIGHT",
+        "beat_interval": 1
+      }
+    },
+    {
+      "x": 4,
+      "y": 3,
+      "belt": {
+        "facing": "UP",
+        "turn_mode": "RIGHT",
+        "beat_interval": 1
+      },
+      "cargo": {
+        "type": "CARGO_1"
+      }
+    },
+    {
+      "x": 5,
+      "y": 3,
+      "belt": {
+        "facing": "RIGHT",
+        "turn_mode": "RIGHT",
+        "beat_interval": 1
+      }
+    },
+    {
+      "x": 6,
+      "y": 3,
+      "belt": {
+        "facing": "LEFT",
+        "turn_mode": "LEFT",
+        "beat_interval": 2
+      },
+      "cargo": {
+        "type": "CARGO_1"
+      }
+    },
+    {
+      "x": 7,
+      "y": 3,
+      "belt": {
+        "facing": "UP",
+        "turn_mode": "LEFT",
         "beat_interval": 2
       }
     },
     {
-      "x": 1,
+      "x": 9,
       "y": 3,
       "belt": {
-        "facing": "LEFT",
+        "facing": "UP",
+        "turn_mode": "STRAIGHT",
+        "beat_interval": 1
+      }
+    },
+    {
+      "x": 11,
+      "y": 3,
+      "belt": {
+        "facing": "DOWN",
         "turn_mode": "STRAIGHT",
         "beat_interval": 2
-      },
-      "cargo": {
-        "type": "CARGO_3"
       }
     },
     {
       "x": 0,
-      "y": 3,
+      "y": 4,
+      "belt": {
+        "facing": "UP",
+        "turn_mode": "STRAIGHT",
+        "beat_interval": 2
+      }
+    },
+    {
+      "x": 2,
+      "y": 4,
+      "belt": {
+        "facing": "DOWN",
+        "turn_mode": "STRAIGHT",
+        "beat_interval": 1
+      }
+    },
+    {
+      "x": 4,
+      "y": 4,
+      "belt": {
+        "facing": "LEFT",
+        "turn_mode": "RIGHT",
+        "beat_interval": 1
+      }
+    },
+    {
+      "x": 5,
+      "y": 4,
+      "belt": {
+        "facing": "DOWN",
+        "turn_mode": "RIGHT",
+        "beat_interval": 1
+      }
+    },
+    {
+      "x": 6,
+      "y": 4,
+      "belt": {
+        "facing": "DOWN",
+        "turn_mode": "LEFT",
+        "beat_interval": 2
+      }
+    },
+    {
+      "x": 7,
+      "y": 4,
+      "belt": {
+        "facing": "RIGHT",
+        "turn_mode": "LEFT",
+        "beat_interval": 2
+      }
+    },
+    {
+      "x": 9,
+      "y": 4,
+      "belt": {
+        "facing": "UP",
+        "turn_mode": "STRAIGHT",
+        "beat_interval": 1
+      }
+    },
+    {
+      "x": 11,
+      "y": 4,
+      "belt": {
+        "facing": "DOWN",
+        "turn_mode": "STRAIGHT",
+        "beat_interval": 2
+      }
+    },
+    {
+      "x": 0,
+      "y": 5,
+      "belt": {
+        "facing": "UP",
+        "turn_mode": "STRAIGHT",
+        "beat_interval": 2
+      }
+    },
+    {
+      "x": 2,
+      "y": 5,
+      "belt": {
+        "facing": "DOWN",
+        "turn_mode": "STRAIGHT",
+        "beat_interval": 1
+      }
+    },
+    {
+      "x": 9,
+      "y": 5,
+      "belt": {
+        "facing": "UP",
+        "turn_mode": "STRAIGHT",
+        "beat_interval": 1
+      }
+    },
+    {
+      "x": 11,
+      "y": 5,
+      "belt": {
+        "facing": "DOWN",
+        "turn_mode": "STRAIGHT",
+        "beat_interval": 2
+      }
+    },
+    {
+      "x": 0,
+      "y": 6,
+      "belt": {
+        "facing": "UP",
+        "turn_mode": "STRAIGHT",
+        "beat_interval": 2
+      }
+    },
+    {
+      "x": 2,
+      "y": 6,
+      "belt": {
+        "facing": "DOWN",
+        "turn_mode": "LEFT",
+        "beat_interval": 1
+      }
+    },
+    {
+      "x": 3,
+      "y": 6,
+      "belt": {
+        "facing": "RIGHT",
+        "turn_mode": "STRAIGHT",
+        "beat_interval": 1
+      }
+    },
+    {
+      "x": 4,
+      "y": 6,
+      "belt": {
+        "facing": "RIGHT",
+        "turn_mode": "STRAIGHT",
+        "beat_interval": 1
+      }
+    },
+    {
+      "x": 5,
+      "y": 6,
+      "belt": {
+        "facing": "RIGHT",
+        "turn_mode": "STRAIGHT",
+        "beat_interval": 1
+      }
+    },
+    {
+      "x": 6,
+      "y": 6,
+      "belt": {
+        "facing": "RIGHT",
+        "turn_mode": "STRAIGHT",
+        "beat_interval": 1
+      }
+    },
+    {
+      "x": 7,
+      "y": 6,
+      "belt": {
+        "facing": "RIGHT",
+        "turn_mode": "STRAIGHT",
+        "beat_interval": 1
+      }
+    },
+    {
+      "x": 8,
+      "y": 6,
+      "belt": {
+        "facing": "RIGHT",
+        "turn_mode": "STRAIGHT",
+        "beat_interval": 1
+      }
+    },
+    {
+      "x": 9,
+      "y": 6,
+      "belt": {
+        "facing": "RIGHT",
+        "turn_mode": "LEFT",
+        "beat_interval": 1
+      }
+    },
+    {
+      "x": 11,
+      "y": 6,
+      "belt": {
+        "facing": "DOWN",
+        "turn_mode": "STRAIGHT",
+        "beat_interval": 2
+      }
+    },
+    {
+      "x": 0,
+      "y": 7,
       "belt": {
         "facing": "LEFT",
         "turn_mode": "RIGHT",
@@ -105,20 +531,101 @@
       }
     },
     {
-      "x": 0,
-      "y": 2,
+      "x": 1,
+      "y": 7,
       "belt": {
-        "facing": "UP",
+        "facing": "LEFT",
         "turn_mode": "STRAIGHT",
         "beat_interval": 2
       }
     },
     {
-      "x": 0,
-      "y": 1,
+      "x": 2,
+      "y": 7,
       "belt": {
-        "facing": "UP",
+        "facing": "LEFT",
         "turn_mode": "STRAIGHT",
+        "beat_interval": 2
+      }
+    },
+    {
+      "x": 3,
+      "y": 7,
+      "belt": {
+        "facing": "LEFT",
+        "turn_mode": "STRAIGHT",
+        "beat_interval": 2
+      }
+    },
+    {
+      "x": 4,
+      "y": 7,
+      "belt": {
+        "facing": "LEFT",
+        "turn_mode": "STRAIGHT",
+        "beat_interval": 2
+      }
+    },
+    {
+      "x": 5,
+      "y": 7,
+      "belt": {
+        "facing": "LEFT",
+        "turn_mode": "STRAIGHT",
+        "beat_interval": 2
+      }
+    },
+    {
+      "x": 6,
+      "y": 7,
+      "belt": {
+        "facing": "LEFT",
+        "turn_mode": "STRAIGHT",
+        "beat_interval": 2
+      }
+    },
+    {
+      "x": 7,
+      "y": 7,
+      "belt": {
+        "facing": "LEFT",
+        "turn_mode": "STRAIGHT",
+        "beat_interval": 2
+      }
+    },
+    {
+      "x": 8,
+      "y": 7,
+      "belt": {
+        "facing": "LEFT",
+        "turn_mode": "STRAIGHT",
+        "beat_interval": 2
+      }
+    },
+    {
+      "x": 9,
+      "y": 7,
+      "belt": {
+        "facing": "LEFT",
+        "turn_mode": "STRAIGHT",
+        "beat_interval": 2
+      }
+    },
+    {
+      "x": 10,
+      "y": 7,
+      "belt": {
+        "facing": "LEFT",
+        "turn_mode": "STRAIGHT",
+        "beat_interval": 2
+      }
+    },
+    {
+      "x": 11,
+      "y": 7,
+      "belt": {
+        "facing": "DOWN",
+        "turn_mode": "RIGHT",
         "beat_interval": 2
       }
     }
