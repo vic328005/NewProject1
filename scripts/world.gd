@@ -12,10 +12,13 @@ var level_id: String = ""
 var display_name: String = ""
 var grid_width: int = 0
 var grid_height: int = 0
-var _beat_conductor: BeatConductor
+var _beats: BeatConductor
+var _config: Config
 
 
-func _init() -> void:
+func _init(config: Config) -> void:
+	assert(config != null, "World requires a Config instance.")
+	_config = config
 	main_layer = _create_layer()
 	cargo_layer = _create_layer()
 	belt_layer = _create_layer()
@@ -24,30 +27,30 @@ func _init() -> void:
 
 
 func _enter_tree() -> void:
-	if is_instance_valid(GM.current_world) and GM.current_world != self:
+	if is_instance_valid(GM.world) and GM.world != self:
 		push_error("Only one World instance is allowed.")
 		queue_free()
 		return
 
-	GM.current_world = self
+	GM.world = self
 
 
 func _ready() -> void:
-	if GM.current_world != self:
+	if GM.world != self:
 		return
 
-	_beat_conductor = GM.beat_conductor
+	_beats = GM.beats
 
-	if not _beat_conductor.beat_fired.is_connected(_on_beat_fired):
-		_beat_conductor.beat_fired.connect(_on_beat_fired)
+	if not _beats.beat_fired.is_connected(_on_beat_fired):
+		_beats.beat_fired.connect(_on_beat_fired)
 
 
 func _exit_tree() -> void:
-	if is_instance_valid(_beat_conductor) and _beat_conductor.beat_fired.is_connected(_on_beat_fired):
-		_beat_conductor.beat_fired.disconnect(_on_beat_fired)
+	if is_instance_valid(_beats) and _beats.beat_fired.is_connected(_on_beat_fired):
+		_beats.beat_fired.disconnect(_on_beat_fired)
 
-	if GM.current_world == self:
-		GM.current_world = null
+	if GM.world == self:
+		GM.world = null
 
 
 func world_to_cell(world_position: Vector2) -> Vector2i:
@@ -56,6 +59,16 @@ func world_to_cell(world_position: Vector2) -> Vector2i:
 
 func cell_to_world(cell: Vector2i) -> Vector2:
 	return main_layer.cell_to_world(cell)
+
+
+func get_level_center() -> Vector2:
+	if grid_width <= 0 or grid_height <= 0:
+		return Vector2.ZERO
+
+	var last_cell_origin: Vector2 = cell_to_world(Vector2i(grid_width - 1, grid_height - 1))
+	var half_cell_size: float = float(main_layer.cell_size) * 0.5
+	var center_offset: Vector2 = Vector2(half_cell_size, half_cell_size)
+	return last_cell_origin * 0.5 + center_offset
 
 
 func clear_level_content() -> void:
@@ -89,7 +102,7 @@ func add_level_content(node: Node) -> void:
 
 func _create_layer() -> MapLayer:
 	var layer: MapLayer = MapLayer.new()
-	layer.cell_size = 64
+	layer.cell_size = _config.cell_size
 	return layer
 
 

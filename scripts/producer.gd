@@ -28,7 +28,7 @@ var _is_registered_to_layer: bool = false
 
 
 func _ready() -> void:
-	_world = GM.current_world
+	_world = GM.world
 	_register_to_producer_layer()
 
 

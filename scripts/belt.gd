@@ -53,7 +53,7 @@ func _ready() -> void:
 	if Engine.is_editor_hint():
 		return
 
-	_world = GM.current_world
+	_world = GM.world
 	_register_to_belt_layer()
 
 

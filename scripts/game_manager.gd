@@ -1,54 +1,54 @@
 extends Node
 class_name GameManager
 
-const WORLD_SCENE_UID := "uid://d1md2xh0j3x36"
-const START_LEVEL_PATH := "res://levels/level02.json"
-
-var event_bus: EventBus
-var beat_conductor: BeatConductor
-var current_world: World = null
+var config: Config
+var event: EventBus
+var beats: BeatConductor
+var camera: CameraController = null
+var world: World = null
 var level_loader: LevelLoader
 
 
 func _init() -> void:
-	_ensure_event_bus()
-	_ensure_beat_conductor()
+	_init_config()
+	_ensure_event()
+	_ensure_beats()
 	_ensure_level_loader()
+	_init_camera()
+	_init_world()
 
 
 func _ready() -> void:
 	_load_start_level()
 
 
-func setup() -> void:
-	_ensure_event_bus()
-	_ensure_beat_conductor()
-	_ensure_level_loader()
-	_load_start_level()
-
-
 func emit_event(event_name: StringName, payload: Variant = null) -> void:
-	_ensure_event_bus().emit_event(event_name, payload)
+	_ensure_event().emit_event(event_name, payload)
 
 
-func _ensure_event_bus() -> EventBus:
-	if is_instance_valid(event_bus):
-		return event_bus
-
-	event_bus = EventBus.new()
-	event_bus.name = "EventBus"
-	add_child(event_bus)
-	return event_bus
+func _init_config() -> void:
+	config = Config.new()
+	assert(config != null, "Failed to create Config.")
 
 
-func _ensure_beat_conductor() -> BeatConductor:
-	if is_instance_valid(beat_conductor):
-		return beat_conductor
+func _ensure_event() -> EventBus:
+	if is_instance_valid(event):
+		return event
 
-	beat_conductor = BeatConductor.new()
-	beat_conductor.name = "BeatConductor"
-	add_child(beat_conductor)
-	return beat_conductor
+	event = EventBus.new()
+	event.name = "EventBus"
+	add_child(event)
+	return event
+
+
+func _ensure_beats() -> BeatConductor:
+	if is_instance_valid(beats):
+		return beats
+
+	beats = BeatConductor.new()
+	beats.name = "BeatConductor"
+	add_child(beats)
+	return beats
 
 
 func _ensure_level_loader() -> LevelLoader:
@@ -59,34 +59,34 @@ func _ensure_level_loader() -> LevelLoader:
 	return level_loader
 
 
-func _ensure_world() -> World:
-	if is_instance_valid(current_world):
-		return current_world
+func _init_camera() -> void:
+	assert(config != null, "Config must be initialized before camera setup.")
 
-	var existing_world: World = get_node_or_null("World") as World
-	if existing_world != null:
-		current_world = existing_world
-		return current_world
+	var camera_scene: PackedScene = load(config.camera_scene_uid) as PackedScene
+	assert(camera_scene != null, "Failed to load camera scene: %s" % config.camera_scene_uid)
 
-	var world_scene: PackedScene = load(WORLD_SCENE_UID) as PackedScene
-	if world_scene == null:
-		push_error("Failed to load world scene: %s" % WORLD_SCENE_UID)
-		return null
+	var camera_instance: CameraController = camera_scene.instantiate() as CameraController
+	assert(camera_instance != null, "Camera scene root is not a CameraController: %s" % config.camera_scene_uid)
 
-	var world: World = world_scene.instantiate() as World
-	if world == null:
-		push_error("World scene root is not a World: %s" % WORLD_SCENE_UID)
-		return null
+	camera_instance.name = "Camera"
+	add_child(camera_instance)
+	camera = camera_instance
 
-	world.name = "World"
-	add_child(world)
-	current_world = world
-	return world
+
+func _init_world() -> void:
+	assert(config != null, "Config must be initialized before world setup.")
+
+	var world_instance: World = World.new(config)
+	world_instance.name = "World"
+	add_child(world_instance)
+	world = world_instance
 
 
 func _load_start_level() -> void:
-	var world: World = _ensure_world()
-	if world == null:
+	assert(config != null, "Config must be initialized before loading the start level.")
+
+	var level_data: LevelData = _ensure_level_loader().load_level_file_into_world(config.start_level_path, world, _ensure_beats())
+	if level_data == null:
 		return
 
-	_ensure_level_loader().load_level_file_into_world(START_LEVEL_PATH, world, _ensure_beat_conductor())
+	GM.camera.global_position = world.to_global(world.get_level_center())

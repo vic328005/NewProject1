@@ -23,7 +23,7 @@ func _ready() -> void:
 	_update_sprite_texture()
 
 	if _world == null:
-		_world = GM.current_world
+		_world = GM.world
 
 	if not _is_registered_to_layer:
 		_register_to_cargo_layer()
@@ -120,10 +120,10 @@ func _start_move_to_global_position(target_global_position: Vector2) -> void:
 
 
 func _get_move_duration_seconds() -> float:
-	if not is_instance_valid(GM.beat_conductor):
+	if not is_instance_valid(GM.beats):
 		return 0.0
 
-	return maxf(GM.beat_conductor.get_beat_interval_seconds() * MOVE_DURATION_RATIO, 0.0)
+	return maxf(GM.beats.get_beat_interval_seconds() * MOVE_DURATION_RATIO, 0.0)
 
 
 func _stop_move_tween() -> void:

@@ -4,5 +4,3 @@
 
 [node name="World" type="Node2D" unique_id=1448553848]
 script = ExtResource("1_rwgxs")
-
-[node name="Camera2D" type="Camera2D" parent="." unique_id=299927247]
