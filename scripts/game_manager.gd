@@ -1,12 +1,15 @@
 extends Node
 class_name GameManager
 
+const UI_MODULE_SCENE: PackedScene = preload("res://prefabs/ui/ui_module.tscn")
+
 var config: Config
 var event: EventBus
 var beats: BeatConductor
 var audio: AudioController = null
 var camera: CameraController = null
 var world: World = null
+var ui: UiModule = null
 var level_loader: LevelLoader
 
 
@@ -18,6 +21,7 @@ func _init() -> void:
 	_init_audio()
 	_init_camera()
 	_init_world()
+	_init_ui()
 
 
 func _ready() -> void:
@@ -99,6 +103,17 @@ func _init_world() -> void:
 	world_instance.name = "World"
 	add_child(world_instance)
 	world = world_instance
+
+
+func _init_ui() -> void:
+	assert(UI_MODULE_SCENE != null, "Failed to load UI module scene.")
+
+	var ui_instance: UiModule = UI_MODULE_SCENE.instantiate() as UiModule
+	assert(ui_instance != null, "UI module scene root is not a UiModule.")
+
+	ui_instance.name = "UI"
+	add_child(ui_instance)
+	ui = ui_instance
 
 
 func _load_start_level() -> void:
