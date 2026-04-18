@@ -3,6 +3,11 @@ class_name Cargo
 
 const MOVE_DURATION_RATIO := 0.9
 
+@export var cargo_type: String = "NORMAL":
+	set(value):
+		var normalized_value: String = String(value).strip_edges().to_upper()
+		cargo_type = normalized_value if not normalized_value.is_empty() else "NORMAL"
+
 var _world: World
 var _registered_cell: Vector2i
 var _is_registered_to_layer := false
@@ -63,7 +68,7 @@ func move_to_cell(target_cell: Vector2i) -> bool:
 	if _world.cargo_layer.get_cell(_registered_cell) != self:
 		return false
 
-	var target_global_position := _world.to_global(_world.cell_to_world(target_cell))
+	var target_global_position: Vector2 = _world.to_global(_world.cell_to_world(target_cell))
 	_world.cargo_layer.erase_cell(_registered_cell)
 	_world.cargo_layer.set_cell(target_cell, self)
 	_registered_cell = target_cell
@@ -78,13 +83,13 @@ func _start_move_to_global_position(target_global_position: Vector2) -> void:
 		global_position = target_global_position
 		return
 
-	var move_duration := _get_move_duration_seconds()
+	var move_duration: float = _get_move_duration_seconds()
 	if move_duration <= 0.0:
 		global_position = target_global_position
 		return
 
 	_move_tween = create_tween()
-	var move_tweener := _move_tween.tween_property(self, "global_position", target_global_position, move_duration)
+	var move_tweener: PropertyTweener = _move_tween.tween_property(self, "global_position", target_global_position, move_duration)
 	move_tweener.set_trans(Tween.TRANS_LINEAR)
 	_move_tween.finished.connect(_on_move_tween_finished)
 
