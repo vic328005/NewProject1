@@ -12,9 +12,13 @@ config_version=5
 
 config/name="NewProject1"
 config/version="0.0.1"
-run/main_scene="uid://155xx7s6y6ta"
+run/main_scene="uid://b1byl7ays4fs3"
 config/features=PackedStringArray("4.6", "Forward Plus")
 config/icon="uid://4q335xxs2p"
+
+[autoload]
+
+GM="*uid://du2y0g54p4xud"
 
 [display]
 
