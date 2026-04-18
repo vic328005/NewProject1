@@ -108,52 +108,52 @@ func _direction_to_offset(direction: Direction) -> Vector2i:
 		_:
 			return Vector2i.LEFT
 
-
-func _draw() -> void:
-	var rect := Rect2(Vector2.ZERO, Vector2.ONE * PREVIEW_CELL_SIZE)
-	var fill_color := Color(0.20, 0.52, 0.78, 0.85)
-
-	if beat_interval == 1:
-		fill_color = Color(0.88, 0.48, 0.18, 0.9)
-
-	draw_rect(rect, fill_color, true)
-	draw_rect(rect, Color(0.08, 0.12, 0.16, 0.95), false, 2.0)
-
-	var points := PackedVector2Array()
-	match turn_mode:
-		TurnMode.LEFT:
-			points = PackedVector2Array([
-				Vector2(PREVIEW_CELL_SIZE * 0.22, PREVIEW_CELL_SIZE * 0.5),
-				Vector2(PREVIEW_CELL_SIZE * 0.5, PREVIEW_CELL_SIZE * 0.5),
-				Vector2(PREVIEW_CELL_SIZE * 0.5, PREVIEW_CELL_SIZE * 0.22),
-			])
-		TurnMode.RIGHT:
-			points = PackedVector2Array([
-				Vector2(PREVIEW_CELL_SIZE * 0.22, PREVIEW_CELL_SIZE * 0.5),
-				Vector2(PREVIEW_CELL_SIZE * 0.5, PREVIEW_CELL_SIZE * 0.5),
-				Vector2(PREVIEW_CELL_SIZE * 0.5, PREVIEW_CELL_SIZE * 0.78),
-			])
-		_:
-			points = PackedVector2Array([
-				Vector2(PREVIEW_CELL_SIZE * 0.22, PREVIEW_CELL_SIZE * 0.5),
-				Vector2(PREVIEW_CELL_SIZE * 0.78, PREVIEW_CELL_SIZE * 0.5),
-			])
-
-	for index in range(points.size()):
-		points[index] = (points[index] - PREVIEW_CENTER).rotated(float(facing) * PI * 0.5) + PREVIEW_CENTER
-
-	draw_polyline(points, Color.WHITE, 6.0)
-
-	var tip := points[points.size() - 1]
-	var tail := points[points.size() - 2]
-	var arrow_direction := (tip - tail).normalized()
-	var arrow_normal := Vector2(-arrow_direction.y, arrow_direction.x)
-	var arrow_size := 10.0
-	draw_colored_polygon(
-		PackedVector2Array([
-			tip,
-			tip - arrow_direction * arrow_size + arrow_normal * (arrow_size * 0.6),
-			tip - arrow_direction * arrow_size - arrow_normal * (arrow_size * 0.6),
-		]),
-		Color.WHITE
-	)
+#
+#func _draw() -> void:
+#	var rect := Rect2(Vector2.ZERO, Vector2.ONE * PREVIEW_CELL_SIZE)
+#	var fill_color := Color(0.20, 0.52, 0.78, 0.85)
+#
+#	if beat_interval == 1:
+#		fill_color = Color(0.88, 0.48, 0.18, 0.9)
+#
+#	draw_rect(rect, fill_color, true)
+#	draw_rect(rect, Color(0.08, 0.12, 0.16, 0.95), false, 2.0)
+#
+#	var points := PackedVector2Array()
+#	match turn_mode:
+#		TurnMode.LEFT:
+#			points = PackedVector2Array([
+#				Vector2(PREVIEW_CELL_SIZE * 0.22, PREVIEW_CELL_SIZE * 0.5),
+#				Vector2(PREVIEW_CELL_SIZE * 0.5, PREVIEW_CELL_SIZE * 0.5),
+#				Vector2(PREVIEW_CELL_SIZE * 0.5, PREVIEW_CELL_SIZE * 0.22),
+#			])
+#		TurnMode.RIGHT:
+#			points = PackedVector2Array([
+#				Vector2(PREVIEW_CELL_SIZE * 0.22, PREVIEW_CELL_SIZE * 0.5),
+#				Vector2(PREVIEW_CELL_SIZE * 0.5, PREVIEW_CELL_SIZE * 0.5),
+#				Vector2(PREVIEW_CELL_SIZE * 0.5, PREVIEW_CELL_SIZE * 0.78),
+#			])
+#		_:
+#			points = PackedVector2Array([
+#				Vector2(PREVIEW_CELL_SIZE * 0.22, PREVIEW_CELL_SIZE * 0.5),
+#				Vector2(PREVIEW_CELL_SIZE * 0.78, PREVIEW_CELL_SIZE * 0.5),
+#			])
+#
+#	for index in range(points.size()):
+#		points[index] = (points[index] - PREVIEW_CENTER).rotated(float(facing) * PI * 0.5) + PREVIEW_CENTER
+#
+#	draw_polyline(points, Color.WHITE, 6.0)
+#
+#	var tip := points[points.size() - 1]
+#	var tail := points[points.size() - 2]
+#	var arrow_direction := (tip - tail).normalized()
+#	var arrow_normal := Vector2(-arrow_direction.y, arrow_direction.x)
+#	var arrow_size := 10.0
+#	draw_colored_polygon(
+#		PackedVector2Array([
+#			tip,
+#			tip - arrow_direction * arrow_size + arrow_normal * (arrow_size * 0.6),
+#			tip - arrow_direction * arrow_size - arrow_normal * (arrow_size * 0.6),
+#		]),
+#		Color.WHITE
+#	)

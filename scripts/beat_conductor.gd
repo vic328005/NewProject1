@@ -32,4 +32,6 @@ func _start_beat_timer() -> void:
 
 func _on_beat_timer_timeout() -> void:
 	_beat_index += 1
-	beat_fired.emit(_beat_index, Time.get_ticks_msec() / 1000.0)
+	var beat_time := Time.get_ticks_msec() / 1000.0
+	print("Beat fired: %d at %.3f" % [_beat_index, beat_time])
+	beat_fired.emit(_beat_index, beat_time)
