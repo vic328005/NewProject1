@@ -8,10 +8,13 @@ var cargo_layer: MapLayer
 var belt_layer: MapLayer
 var producer_layer: MapLayer
 var recycler_layer: MapLayer
+var signal_tower_layer: MapLayer
 var level_id: String = ""
 var display_name: String = ""
 var grid_width: int = 0
 var grid_height: int = 0
+var _active_signals: Array = []
+var _last_signal_emit_beat_index: int = -1
 var _beats: BeatConductor
 var _config: Config
 
@@ -24,6 +27,7 @@ func _init(config: Config) -> void:
 	belt_layer = _create_layer()
 	producer_layer = _create_layer()
 	recycler_layer = _create_layer()
+	signal_tower_layer = _create_layer()
 
 
 func _enter_tree() -> void:
@@ -82,6 +86,9 @@ func clear_level_content() -> void:
 	belt_layer.clear()
 	producer_layer.clear()
 	recycler_layer.clear()
+	signal_tower_layer.clear()
+	_active_signals.clear()
+	_last_signal_emit_beat_index = -1
 	level_id = ""
 	display_name = ""
 	grid_width = 0
@@ -110,6 +117,25 @@ func _on_beat_fired(beat_index: int, _beat_time: float) -> void:
 	_resolve_producer_spawns(beat_index)
 	_resolve_belt_moves(beat_index)
 	_resolve_recycler_collection()
+	_resolve_signals(beat_index)
+
+
+func _unhandled_key_input(event: InputEvent) -> void:
+	if GM.world != self:
+		return
+
+	if not (event is InputEventKey):
+		return
+
+	var key_event: InputEventKey = event as InputEventKey
+	if key_event == null or not key_event.pressed or key_event.echo:
+		return
+
+	if key_event.keycode != KEY_SPACE and key_event.physical_keycode != KEY_SPACE:
+		return
+
+	_emit_signal_towers_for_current_beat()
+	get_viewport().set_input_as_handled()
 
 
 func is_cell_in_bounds(cell: Vector2i) -> bool:
@@ -206,3 +232,39 @@ func _resolve_recycler_collection() -> void:
 			continue
 
 		cargo.remove_from_world()
+
+
+func _resolve_signals(beat_index: int) -> void:
+	for index in range(_active_signals.size() - 1, -1, -1):
+		var signal_wave: SignalWave = _active_signals[index] as SignalWave
+		if signal_wave == null or not is_instance_valid(signal_wave):
+			_active_signals.remove_at(index)
+			continue
+
+		signal_wave.advance(beat_index)
+		if not signal_wave.is_finished():
+			continue
+
+		_active_signals.remove_at(index)
+		signal_wave.remove_from_world()
+
+
+func _emit_signal_towers_for_current_beat() -> void:
+	var current_beat_index: int = 0
+	if is_instance_valid(_beats):
+		current_beat_index = _beats.get_current_beat_index()
+
+	if current_beat_index == _last_signal_emit_beat_index:
+		return
+
+	_last_signal_emit_beat_index = current_beat_index
+
+	var signal_tower_cells: Dictionary = signal_tower_layer.get_cells()
+	for cell in signal_tower_cells.keys():
+		var signal_tower: SignalTower = signal_tower_cells[cell] as SignalTower
+		if signal_tower == null or not is_instance_valid(signal_tower):
+			continue
+
+		var signal_wave: SignalWave = signal_tower.create_signal_wave(current_beat_index)
+		_active_signals.append(signal_wave)
+		add_level_content(signal_wave)

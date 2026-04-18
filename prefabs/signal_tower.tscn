@@ -1,0 +1,13 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/signal_tower.gd" id="1_signal_tower"]
+[ext_resource type="Texture2D" path="res://assets/images/unit_white.png" id="2_signal_tower_texture"]
+
+[node name="SignalTower" type="Node2D"]
+script = ExtResource("1_signal_tower")
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+modulate = Color(0.913726, 0.401961, 0.270588, 1)
+z_index = 1
+position = Vector2(32, 32)
+texture = ExtResource("2_signal_tower_texture")

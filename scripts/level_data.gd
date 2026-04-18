@@ -9,11 +9,12 @@ const TOP_LEVEL_KEYS := [
 	"beat_bpm",
 	"cells",
 ]
-const CELL_KEYS := ["x", "y", "belt", "cargo", "producer", "recycler"]
+const CELL_KEYS := ["x", "y", "belt", "cargo", "producer", "recycler", "signal_tower"]
 const BELT_KEYS := ["facing", "turn_mode", "beat_interval"]
 const CARGO_KEYS := ["type"]
 const PRODUCER_KEYS := ["facing", "beat_interval", "cargo_type"]
 const RECYCLER_KEYS: Array = []
+const SIGNAL_TOWER_KEYS: Array = ["max_steps"]
 const BELT_FACING_VALUES := ["UP", "RIGHT", "DOWN", "LEFT"]
 const BELT_TURN_MODE_VALUES := ["STRAIGHT", "LEFT", "RIGHT"]
 const CARGO_TYPE_VALUES := ["CARGO_1", "CARGO_2", "CARGO_3"]
@@ -136,8 +137,12 @@ static func _parse_cell(raw_cell: Dictionary, index: int, level_width: int, leve
 	var has_cargo: bool = raw_cell.has("cargo")
 	var has_producer: bool = raw_cell.has("producer")
 	var has_recycler: bool = raw_cell.has("recycler")
-	if not has_belt and not has_cargo and not has_producer and not has_recycler:
+	var has_signal_tower: bool = raw_cell.has("signal_tower")
+	if not has_belt and not has_cargo and not has_producer and not has_recycler and not has_signal_tower:
 		return _validation_error(source_label, "%s must contain at least one gameplay object" % cell_label)
+
+	if has_signal_tower and (has_belt or has_cargo or has_producer or has_recycler):
+		return _validation_error(source_label, "%s.signal_tower must occupy its own cell" % cell_label)
 
 	var normalized_cell: Dictionary = {
 		"x": x,
@@ -183,6 +188,16 @@ static func _parse_cell(raw_cell: Dictionary, index: int, level_width: int, leve
 			return null
 
 		normalized_cell["recycler"] = normalized_recycler
+
+	if has_signal_tower:
+		if typeof(raw_cell["signal_tower"]) != TYPE_DICTIONARY:
+			return _validation_error(source_label, "%s.signal_tower must be an object" % cell_label)
+
+		var normalized_signal_tower: Variant = _parse_signal_tower(raw_cell["signal_tower"], cell_label, source_label)
+		if normalized_signal_tower == null:
+			return null
+
+		normalized_cell["signal_tower"] = normalized_signal_tower
 
 	seen_cells[cell] = true
 	return normalized_cell
@@ -276,6 +291,21 @@ static func _parse_recycler(raw_recycler: Dictionary, cell_label: String, source
 		return null
 
 	return {}
+
+
+static func _parse_signal_tower(raw_signal_tower: Dictionary, cell_label: String, source_label: String) -> Variant:
+	var signal_tower_label: String = "%s.signal_tower" % cell_label
+	if not _ensure_allowed_keys(raw_signal_tower, SIGNAL_TOWER_KEYS, signal_tower_label, source_label):
+		return null
+
+	var normalized_signal_tower: Dictionary = {}
+	if raw_signal_tower.has("max_steps"):
+		if not _has_positive_integer_number(raw_signal_tower, "max_steps"):
+			return _validation_error(source_label, "%s.max_steps must be a positive integer" % signal_tower_label)
+
+		normalized_signal_tower["max_steps"] = int(raw_signal_tower["max_steps"])
+
+	return normalized_signal_tower
 
 
 static func _ensure_allowed_keys(raw_data: Dictionary, allowed_keys: Array, label: String, source_label: String) -> bool:

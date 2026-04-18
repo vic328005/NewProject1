@@ -5,6 +5,7 @@ const BELT_SCENE := preload("res://prefabs/belt.tscn")
 const CARGO_SCENE := preload("res://prefabs/cargo.tscn")
 const PRODUCER_SCENE := preload("res://prefabs/producer.tscn")
 const RECYCLER_SCENE := preload("res://prefabs/recycler.tscn")
+const SIGNAL_TOWER_SCENE: PackedScene = preload("res://prefabs/signal_tower.tscn")
 
 
 func load_level_file_into_world(level_path: String, world: World, beats: BeatConductor) -> LevelData:
@@ -53,6 +54,11 @@ func apply_level_data_to_world(level_data: LevelData, world: World, beats: BeatC
 			var recycler: Recycler = _create_recycler(cell, recycler_data, world)
 			world.add_level_content(recycler)
 
+		if cell_data.has("signal_tower"):
+			var signal_tower_data: Dictionary = Dictionary(cell_data["signal_tower"])
+			var signal_tower: SignalTower = _create_signal_tower(cell, signal_tower_data, world)
+			world.add_level_content(signal_tower)
+
 		if cell_data.has("cargo"):
 			var cargo_data: Dictionary = Dictionary(cell_data["cargo"])
 			var cargo: Cargo = _create_cargo(cell, cargo_data, world)
@@ -90,6 +96,14 @@ func _create_recycler(cell: Vector2i, _recycler_data: Dictionary, world: World) 
 	var recycler: Recycler = RECYCLER_SCENE.instantiate() as Recycler
 	recycler.position = world.cell_to_world(cell)
 	return recycler
+
+
+func _create_signal_tower(cell: Vector2i, signal_tower_data: Dictionary, world: World) -> SignalTower:
+	var signal_tower: SignalTower = SIGNAL_TOWER_SCENE.instantiate() as SignalTower
+	signal_tower.position = world.cell_to_world(cell)
+	if signal_tower_data.has("max_steps"):
+		signal_tower.max_steps = int(signal_tower_data["max_steps"])
+	return signal_tower
 
 
 func _to_belt_direction(direction_name: String) -> Belt.Direction:

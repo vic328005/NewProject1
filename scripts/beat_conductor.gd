@@ -24,6 +24,10 @@ func get_beat_interval_seconds() -> float:
 	return 60.0 / bpm
 
 
+func get_current_beat_index() -> int:
+	return _beat_index
+
+
 func _start_beat_timer() -> void:
 	if is_instance_valid(_beat_timer):
 		return
