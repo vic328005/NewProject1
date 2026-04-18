@@ -29,6 +29,10 @@ func clear() -> void:
 	_cells.clear()
 
 
+func get_cells() -> Dictionary:
+	return _cells
+
+
 func world_to_cell(position: Vector2) -> Vector2i:
 	var cell_x := int(floor(position.x / float(cell_size)))
 	var cell_y := int(floor(position.y / float(cell_size)))

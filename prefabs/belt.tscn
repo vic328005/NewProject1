@@ -1,0 +1,10 @@
+[gd_scene format=3 uid="uid://ceanj1p1pcm8t"]
+
+[ext_resource type="Script" uid="uid://rbfh0ygfmulh" path="res://scripts/belt.gd" id="1_gfr51"]
+[ext_resource type="Texture2D" uid="uid://fs0l0br84iyg" path="res://assets/images/belt_straight_interval_2.png" id="2_hi0r2"]
+
+[node name="Belt" type="Node2D" unique_id=1037888241]
+script = ExtResource("1_gfr51")
+
+[node name="Sprite2D" type="Sprite2D" parent="." unique_id=2091593251]
+texture = ExtResource("2_hi0r2")

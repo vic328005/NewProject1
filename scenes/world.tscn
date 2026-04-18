@@ -1,0 +1,11 @@
+[gd_scene format=3 uid="uid://d1md2xh0j3x36"]
+
+[ext_resource type="Script" uid="uid://b2joei7fll84s" path="res://scripts/world.gd" id="1_rwgxs"]
+[ext_resource type="PackedScene" uid="uid://bqakem14t0x81" path="res://prefabs/cargo.tscn" id="2_4wyf3"]
+
+[node name="World" type="Node2D" unique_id=1448553848]
+script = ExtResource("1_rwgxs")
+
+[node name="Camera2D" type="Camera2D" parent="." unique_id=299927247]
+
+[node name="Cargo" parent="." unique_id=918002718 instance=ExtResource("2_4wyf3")]
