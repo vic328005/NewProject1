@@ -8,4 +8,5 @@ script = ExtResource("1_kdbxi")
 
 [node name="Sprite2D" type="Sprite2D" parent="." unique_id=435288325]
 z_index = 1
+position = Vector2(32, 32)
 texture = ExtResource("2_kdbxi")

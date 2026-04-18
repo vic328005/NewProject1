@@ -21,8 +21,12 @@ var _move_tween: Tween
 
 func _ready() -> void:
 	_update_sprite_texture()
-	_world = GM.current_world
-	_register_to_cargo_layer()
+
+	if _world == null:
+		_world = GM.current_world
+
+	if not _is_registered_to_layer:
+		_register_to_cargo_layer()
 
 
 func _exit_tree() -> void:
@@ -55,6 +59,15 @@ func get_registered_cell() -> Vector2i:
 	return _registered_cell
 
 
+func place_at_cell(world: World, cell: Vector2i) -> void:
+	_world = world
+	_registered_cell = cell
+	_stop_move_tween()
+	global_position = _world.to_global(_world.cell_to_world(_registered_cell))
+	_world.cargo_layer.set_cell(_registered_cell, self)
+	_is_registered_to_layer = true
+
+
 func move_to_cell(target_cell: Vector2i) -> bool:
 	if _world == null:
 		return false
@@ -80,6 +93,12 @@ func move_to_cell(target_cell: Vector2i) -> bool:
 	_registered_cell = target_cell
 	_start_move_to_global_position(target_global_position)
 	return true
+
+
+func remove_from_world() -> void:
+	_stop_move_tween()
+	_unregister_from_cargo_layer()
+	queue_free()
 
 
 func _start_move_to_global_position(target_global_position: Vector2) -> void:

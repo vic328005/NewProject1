@@ -1,14 +1,17 @@
 class_name World
 extends Node2D
 
+const CARGO_SCENE: PackedScene = preload("res://prefabs/cargo.tscn")
+
 var main_layer: MapLayer
 var cargo_layer: MapLayer
 var belt_layer: MapLayer
+var producer_layer: MapLayer
+var recycler_layer: MapLayer
 var level_id: String = ""
 var display_name: String = ""
 var grid_width: int = 0
 var grid_height: int = 0
-var level_entities: Array[LevelEntityData] = []
 var _beat_conductor: BeatConductor
 
 
@@ -16,6 +19,8 @@ func _init() -> void:
 	main_layer = _create_layer()
 	cargo_layer = _create_layer()
 	belt_layer = _create_layer()
+	producer_layer = _create_layer()
+	recycler_layer = _create_layer()
 
 
 func _enter_tree() -> void:
@@ -62,11 +67,12 @@ func clear_level_content() -> void:
 	main_layer.clear()
 	cargo_layer.clear()
 	belt_layer.clear()
+	producer_layer.clear()
+	recycler_layer.clear()
 	level_id = ""
 	display_name = ""
 	grid_width = 0
 	grid_height = 0
-	level_entities.clear()
 
 
 func apply_level_metadata(level_data: LevelData) -> void:
@@ -74,7 +80,6 @@ func apply_level_metadata(level_data: LevelData) -> void:
 	display_name = level_data.display_name
 	grid_width = level_data.grid_width
 	grid_height = level_data.grid_height
-	level_entities = level_data.entities.duplicate()
 
 
 func add_level_content(node: Node) -> void:
@@ -89,7 +94,48 @@ func _create_layer() -> MapLayer:
 
 
 func _on_beat_fired(beat_index: int, _beat_time: float) -> void:
+	_resolve_producer_spawns(beat_index)
 	_resolve_belt_moves(beat_index)
+	_resolve_recycler_collection()
+
+
+func is_cell_in_bounds(cell: Vector2i) -> bool:
+	return cell.x >= 0 and cell.x < grid_width and cell.y >= 0 and cell.y < grid_height
+
+
+func spawn_cargo(cell: Vector2i, cargo_type: String) -> Cargo:
+	if not is_cell_in_bounds(cell):
+		return null
+
+	if cargo_layer.has_cell(cell):
+		return null
+
+	var cargo: Cargo = CARGO_SCENE.instantiate() as Cargo
+	cargo.cargo_type = cargo_type
+	cargo.place_at_cell(self, cell)
+	add_level_content(cargo)
+	return cargo
+
+
+func _resolve_producer_spawns(beat_index: int) -> void:
+	var producer_cells: Dictionary = producer_layer.get_cells()
+
+	for cell in producer_cells.keys():
+		var producer: Producer = producer_cells[cell] as Producer
+		if producer == null or not is_instance_valid(producer):
+			continue
+
+		if not producer.should_trigger_on_beat(beat_index):
+			continue
+
+		var target_cell: Vector2i = producer.get_target_cell()
+		if not is_cell_in_bounds(target_cell):
+			continue
+
+		if cargo_layer.has_cell(target_cell):
+			continue
+
+		spawn_cargo(target_cell, producer.cargo_type)
 
 
 func _resolve_belt_moves(beat_index: int) -> void:
@@ -132,3 +178,18 @@ func _resolve_belt_moves(beat_index: int) -> void:
 			continue
 
 		cargo.move_to_cell(target_cell)
+
+
+func _resolve_recycler_collection() -> void:
+	var recycler_cells: Dictionary = recycler_layer.get_cells()
+
+	for cell in recycler_cells.keys():
+		var recycler: Recycler = recycler_cells[cell] as Recycler
+		if recycler == null or not is_instance_valid(recycler):
+			continue
+
+		var cargo: Cargo = cargo_layer.get_cell(cell) as Cargo
+		if cargo == null or not is_instance_valid(cargo):
+			continue
+
+		cargo.remove_from_world()

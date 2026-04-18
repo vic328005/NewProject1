@@ -8,12 +8,12 @@ const TOP_LEVEL_KEYS := [
 	"grid_height",
 	"beat_bpm",
 	"cells",
-	"entities",
 ]
-const CELL_KEYS := ["x", "y", "belt", "cargo"]
+const CELL_KEYS := ["x", "y", "belt", "cargo", "producer", "recycler"]
 const BELT_KEYS := ["facing", "turn_mode", "beat_interval"]
 const CARGO_KEYS := ["type"]
-const ENTITY_KEYS := ["id", "kind", "x", "y", "data"]
+const PRODUCER_KEYS := ["facing", "beat_interval", "cargo_type"]
+const RECYCLER_KEYS: Array = []
 const BELT_FACING_VALUES := ["UP", "RIGHT", "DOWN", "LEFT"]
 const BELT_TURN_MODE_VALUES := ["STRAIGHT", "LEFT", "RIGHT"]
 const CARGO_TYPE_VALUES := ["CARGO_1", "CARGO_2", "CARGO_3"]
@@ -24,7 +24,6 @@ var grid_width: int = 0
 var grid_height: int = 0
 var beat_bpm: float = 60.0
 var cells: Array[Dictionary] = []
-var entities: Array[LevelEntityData] = []
 
 
 static func load_from_file(path: String) -> LevelData:
@@ -91,9 +90,6 @@ static func from_dictionary(raw_data: Dictionary, source_label: String = "<memor
 	if not raw_data.has("cells") or typeof(raw_data["cells"]) != TYPE_ARRAY:
 		return _validation_error(source_label, "cells must be an array")
 
-	if not raw_data.has("entities") or typeof(raw_data["entities"]) != TYPE_ARRAY:
-		return _validation_error(source_label, "entities must be an array")
-
 	var level_data: LevelData = LevelData.new()
 	level_data.level_id = String(raw_data["level_id"])
 	level_data.display_name = String(raw_data["display_name"])
@@ -112,18 +108,6 @@ static func from_dictionary(raw_data: Dictionary, source_label: String = "<memor
 			return null
 
 		level_data.cells.append(normalized_cell)
-
-	var seen_entity_ids: Dictionary = {}
-	var raw_entities: Array = Array(raw_data["entities"])
-	for index in range(raw_entities.size()):
-		if typeof(raw_entities[index]) != TYPE_DICTIONARY:
-			return _validation_error(source_label, "entities[%d] must be an object" % index)
-
-		var entity_data: LevelEntityData = _parse_entity(raw_entities[index], index, level_data.grid_width, level_data.grid_height, seen_entity_ids, source_label)
-		if entity_data == null:
-			return null
-
-		level_data.entities.append(entity_data)
 
 	return level_data
 
@@ -150,8 +134,10 @@ static func _parse_cell(raw_cell: Dictionary, index: int, level_width: int, leve
 
 	var has_belt: bool = raw_cell.has("belt")
 	var has_cargo: bool = raw_cell.has("cargo")
-	if not has_belt and not has_cargo:
-		return _validation_error(source_label, "%s must contain at least one of belt or cargo" % cell_label)
+	var has_producer: bool = raw_cell.has("producer")
+	var has_recycler: bool = raw_cell.has("recycler")
+	if not has_belt and not has_cargo and not has_producer and not has_recycler:
+		return _validation_error(source_label, "%s must contain at least one gameplay object" % cell_label)
 
 	var normalized_cell: Dictionary = {
 		"x": x,
@@ -177,6 +163,26 @@ static func _parse_cell(raw_cell: Dictionary, index: int, level_width: int, leve
 			return null
 
 		normalized_cell["cargo"] = normalized_cargo
+
+	if has_producer:
+		if typeof(raw_cell["producer"]) != TYPE_DICTIONARY:
+			return _validation_error(source_label, "%s.producer must be an object" % cell_label)
+
+		var normalized_producer: Variant = _parse_producer(raw_cell["producer"], cell_label, source_label)
+		if normalized_producer == null:
+			return null
+
+		normalized_cell["producer"] = normalized_producer
+
+	if has_recycler:
+		if typeof(raw_cell["recycler"]) != TYPE_DICTIONARY:
+			return _validation_error(source_label, "%s.recycler must be an object" % cell_label)
+
+		var normalized_recycler: Variant = _parse_recycler(raw_cell["recycler"], cell_label, source_label)
+		if normalized_recycler == null:
+			return null
+
+		normalized_cell["recycler"] = normalized_recycler
 
 	seen_cells[cell] = true
 	return normalized_cell
@@ -233,54 +239,43 @@ static func _parse_cargo(raw_cargo: Dictionary, cell_label: String, source_label
 	}
 
 
-static func _parse_entity(raw_entity: Dictionary, index: int, level_width: int, level_height: int, seen_entity_ids: Dictionary, source_label: String) -> LevelEntityData:
-	var entity_label: String = "entities[%d]" % index
-	if not _ensure_allowed_keys(raw_entity, ENTITY_KEYS, entity_label, source_label):
+static func _parse_producer(raw_producer: Dictionary, cell_label: String, source_label: String) -> Variant:
+	var producer_label: String = "%s.producer" % cell_label
+	if not _ensure_allowed_keys(raw_producer, PRODUCER_KEYS, producer_label, source_label):
 		return null
 
-	if not _has_non_empty_string(raw_entity, "id"):
-		_validation_error(source_label, "%s.id must be a non-empty string" % entity_label)
+	if not _has_non_empty_string(raw_producer, "facing"):
+		return _validation_error(source_label, "%s.facing must be a non-empty string" % producer_label)
+
+	if not _has_positive_integer_number(raw_producer, "beat_interval"):
+		return _validation_error(source_label, "%s.beat_interval must be a positive integer" % producer_label)
+
+	if not _has_non_empty_string(raw_producer, "cargo_type"):
+		return _validation_error(source_label, "%s.cargo_type must be a non-empty string" % producer_label)
+
+	var facing: String = String(raw_producer["facing"]).strip_edges().to_upper()
+	var beat_interval: int = int(raw_producer["beat_interval"])
+	var cargo_type: String = String(raw_producer["cargo_type"]).strip_edges().to_upper()
+
+	if not BELT_FACING_VALUES.has(facing):
+		return _validation_error(source_label, "%s.facing must be one of %s" % [producer_label, BELT_FACING_VALUES])
+
+	if not CARGO_TYPE_VALUES.has(cargo_type):
+		return _validation_error(source_label, "%s.cargo_type must be one of %s" % [producer_label, CARGO_TYPE_VALUES])
+
+	return {
+		"facing": facing,
+		"beat_interval": beat_interval,
+		"cargo_type": cargo_type,
+	}
+
+
+static func _parse_recycler(raw_recycler: Dictionary, cell_label: String, source_label: String) -> Variant:
+	var recycler_label: String = "%s.recycler" % cell_label
+	if not _ensure_allowed_keys(raw_recycler, RECYCLER_KEYS, recycler_label, source_label):
 		return null
 
-	if not _has_non_empty_string(raw_entity, "kind"):
-		_validation_error(source_label, "%s.kind must be a non-empty string" % entity_label)
-		return null
-
-	if not _has_integer_number(raw_entity, "x"):
-		_validation_error(source_label, "%s.x must be an integer" % entity_label)
-		return null
-
-	if not _has_integer_number(raw_entity, "y"):
-		_validation_error(source_label, "%s.y must be an integer" % entity_label)
-		return null
-
-	if not raw_entity.has("data") or typeof(raw_entity["data"]) != TYPE_DICTIONARY:
-		_validation_error(source_label, "%s.data must be an object" % entity_label)
-		return null
-
-	var entity_id: String = String(raw_entity["id"])
-	var kind: String = String(raw_entity["kind"])
-	var x: int = int(raw_entity["x"])
-	var y: int = int(raw_entity["y"])
-	if x < 0 or x >= level_width or y < 0 or y >= level_height:
-		_validation_error(source_label, "%s coordinates (%d, %d) are out of bounds" % [entity_label, x, y])
-		return null
-
-	if seen_entity_ids.has(entity_id):
-		_validation_error(source_label, "duplicate entity id found: %s" % entity_id)
-		return null
-
-	if kind != kind.to_upper():
-		_validation_error(source_label, "%s.kind must use uppercase naming" % entity_label)
-		return null
-
-	var entity: LevelEntityData = LevelEntityData.new()
-	entity.id = entity_id
-	entity.kind = kind
-	entity.cell = Vector2i(x, y)
-	entity.data = Dictionary(raw_entity["data"]).duplicate(true)
-	seen_entity_ids[entity_id] = true
-	return entity
+	return {}
 
 
 static func _ensure_allowed_keys(raw_data: Dictionary, allowed_keys: Array, label: String, source_label: String) -> bool:

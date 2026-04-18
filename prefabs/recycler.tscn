@@ -1,0 +1,12 @@
+[gd_scene format=3 uid="uid://dned8nxfvjbb7"]
+
+[ext_resource type="Script" uid="uid://dgi7g1tgieyap" path="res://scripts/recycler.gd" id="1_recycler"]
+[ext_resource type="Texture2D" uid="uid://b1wnmqxdiiv50" path="res://assets/images/unit_white.png" id="2_rrhh7"]
+
+[node name="Recycler" type="Node2D" unique_id=1088124262]
+script = ExtResource("1_recycler")
+
+[node name="Sprite2D" type="Sprite2D" parent="." unique_id=1112811208]
+modulate = Color(0.93792397, 0, 0.22065541, 1)
+position = Vector2(32, 32)
+texture = ExtResource("2_rrhh7")

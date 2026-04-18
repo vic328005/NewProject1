@@ -3,6 +3,8 @@ extends RefCounted
 
 const BELT_SCENE := preload("res://prefabs/belt.tscn")
 const CARGO_SCENE := preload("res://prefabs/cargo.tscn")
+const PRODUCER_SCENE := preload("res://prefabs/producer.tscn")
+const RECYCLER_SCENE := preload("res://prefabs/recycler.tscn")
 
 
 func load_level_file_into_world(level_path: String, world: World, beat_conductor: BeatConductor) -> LevelData:
@@ -41,6 +43,16 @@ func apply_level_data_to_world(level_data: LevelData, world: World, beat_conduct
 			var belt: Belt = _create_belt(cell, belt_data, world)
 			world.add_level_content(belt)
 
+		if cell_data.has("producer"):
+			var producer_data: Dictionary = Dictionary(cell_data["producer"])
+			var producer: Producer = _create_producer(cell, producer_data, world)
+			world.add_level_content(producer)
+
+		if cell_data.has("recycler"):
+			var recycler_data: Dictionary = Dictionary(cell_data["recycler"])
+			var recycler: Recycler = _create_recycler(cell, recycler_data, world)
+			world.add_level_content(recycler)
+
 		if cell_data.has("cargo"):
 			var cargo_data: Dictionary = Dictionary(cell_data["cargo"])
 			var cargo: Cargo = _create_cargo(cell, cargo_data, world)
@@ -60,9 +72,24 @@ func _create_belt(cell: Vector2i, belt_data: Dictionary, world: World) -> Belt:
 
 func _create_cargo(cell: Vector2i, cargo_data: Dictionary, world: World) -> Cargo:
 	var cargo: Cargo = CARGO_SCENE.instantiate() as Cargo
-	cargo.position = world.cell_to_world(cell)
 	cargo.cargo_type = String(cargo_data["type"])
+	cargo.place_at_cell(world, cell)
 	return cargo
+
+
+func _create_producer(cell: Vector2i, producer_data: Dictionary, world: World) -> Producer:
+	var producer: Producer = PRODUCER_SCENE.instantiate() as Producer
+	producer.position = world.cell_to_world(cell)
+	producer.facing = _to_producer_direction(String(producer_data["facing"]))
+	producer.beat_interval = int(producer_data["beat_interval"])
+	producer.cargo_type = String(producer_data["cargo_type"])
+	return producer
+
+
+func _create_recycler(cell: Vector2i, _recycler_data: Dictionary, world: World) -> Recycler:
+	var recycler: Recycler = RECYCLER_SCENE.instantiate() as Recycler
+	recycler.position = world.cell_to_world(cell)
+	return recycler
 
 
 func _to_belt_direction(direction_name: String) -> Belt.Direction:
@@ -75,6 +102,18 @@ func _to_belt_direction(direction_name: String) -> Belt.Direction:
 			return Belt.Direction.DOWN
 		_:
 			return Belt.Direction.LEFT
+
+
+func _to_producer_direction(direction_name: String) -> Producer.Direction:
+	match direction_name:
+		"UP":
+			return Producer.Direction.UP
+		"RIGHT":
+			return Producer.Direction.RIGHT
+		"DOWN":
+			return Producer.Direction.DOWN
+		_:
+			return Producer.Direction.LEFT
 
 
 func _to_belt_turn_mode(turn_mode_name: String) -> Belt.TurnMode:

@@ -1,0 +1,13 @@
+[gd_scene format=3 uid="uid://df5th0vr3mhar"]
+
+[ext_resource type="Script" uid="uid://m16w6efqp4k3" path="res://scripts/producer.gd" id="1_producer"]
+[ext_resource type="Texture2D" uid="uid://b1wnmqxdiiv50" path="res://assets/images/unit_white.png" id="2_tbjhi"]
+
+[node name="Producer" type="Node2D" unique_id=916179787]
+script = ExtResource("1_producer")
+
+[node name="Sprite2D" type="Sprite2D" parent="." unique_id=1036682831]
+modulate = Color(8.759796e-06, 0.7093056, 7.70092e-07, 1)
+z_index = 1
+position = Vector2(32, 32)
+texture = ExtResource("2_tbjhi")

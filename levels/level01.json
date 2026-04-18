@@ -13,6 +13,11 @@
         "turn_mode": "RIGHT",
         "beat_interval": 2
       },
+      "producer": {
+        "facing": "RIGHT",
+        "beat_interval": 4,
+        "cargo_type": "CARGO_1"
+      },
       "cargo": {
         "type": "CARGO_3"
       }
@@ -114,6 +119,8 @@
         "facing": "RIGHT",
         "turn_mode": "RIGHT",
         "beat_interval": 2
+      },
+      "recycler": {
       }
     },
     {
@@ -629,6 +636,5 @@
         "beat_interval": 2
       }
     }
-  ],
-  "entities": []
+  ]
 }

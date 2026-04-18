@@ -1,0 +1,73 @@
+{
+  "level_id": "level02",
+  "display_name": "生产与回收测试",
+  "grid_width": 6,
+  "grid_height": 4,
+  "beat_bpm": 120,
+  "cells": [
+    {
+      "x": 0,
+      "y": 1,
+      "producer": {
+        "facing": "RIGHT",
+        "beat_interval": 2,
+        "cargo_type": "CARGO_1"
+      }
+    },
+    {
+      "x": 1,
+      "y": 1,
+      "belt": {
+        "facing": "RIGHT",
+        "turn_mode": "STRAIGHT",
+        "beat_interval": 2
+      }
+    },
+    {
+      "x": 2,
+      "y": 1,
+      "belt": {
+        "facing": "RIGHT",
+        "turn_mode": "STRAIGHT",
+        "beat_interval": 2
+      }
+    },
+    {
+      "x": 3,
+      "y": 1,
+      "belt": {
+        "facing": "RIGHT",
+        "turn_mode": "STRAIGHT",
+        "beat_interval": 2
+      }
+    },
+    {
+      "x": 4,
+      "y": 1,
+      "belt": {
+        "facing": "RIGHT",
+        "turn_mode": "STRAIGHT",
+        "beat_interval": 2
+      }
+    },
+    {
+      "x": 5,
+      "y": 1,
+      "recycler": {}
+    },
+    {
+      "x": 0,
+      "y": 3,
+      "producer": {
+        "facing": "RIGHT",
+        "beat_interval": 3,
+        "cargo_type": "CARGO_2"
+      }
+    },
+    {
+      "x": 1,
+      "y": 3,
+      "recycler": {}
+    }
+  ]
+}
