@@ -2,7 +2,7 @@ extends Node
 class_name GameManager
 
 const WORLD_SCENE_UID := "uid://d1md2xh0j3x36"
-const START_LEVEL_PATH := "res://levels/tutorial_01.json"
+const START_LEVEL_PATH := "res://levels/level01.json"
 
 var event_bus: EventBus
 var beat_conductor: BeatConductor

@@ -2,19 +2,25 @@ extends Node2D
 class_name Cargo
 
 const MOVE_DURATION_RATIO := 0.9
+const DEFAULT_CARGO_TYPE: String = "CARGO_1"
+const CARGO_TEXTURE_1: Texture2D = preload("res://assets/images/cargo_1.png")
+const CARGO_TEXTURE_2: Texture2D = preload("res://assets/images/cargo_2.png")
+const CARGO_TEXTURE_3: Texture2D = preload("res://assets/images/cargo_3.png")
 
-@export var cargo_type: String = "NORMAL":
+@export var cargo_type: String = DEFAULT_CARGO_TYPE:
 	set(value):
-		var normalized_value: String = String(value).strip_edges().to_upper()
-		cargo_type = normalized_value if not normalized_value.is_empty() else "NORMAL"
+		cargo_type = _normalize_cargo_type(value)
+		_update_sprite_texture()
 
 var _world: World
 var _registered_cell: Vector2i
 var _is_registered_to_layer := false
 var _move_tween: Tween
+@onready var _sprite: Sprite2D = $Sprite2D
 
 
 func _ready() -> void:
+	_update_sprite_texture()
 	_world = GM.current_world
 	_register_to_cargo_layer()
 
@@ -111,3 +117,25 @@ func _stop_move_tween() -> void:
 
 func _on_move_tween_finished() -> void:
 	_move_tween = null
+
+
+static func _normalize_cargo_type(value: Variant) -> String:
+	var normalized_value: String = String(value).strip_edges().to_upper()
+	return normalized_value if not normalized_value.is_empty() else DEFAULT_CARGO_TYPE
+
+
+func _update_sprite_texture() -> void:
+	if _sprite == null:
+		return
+
+	_sprite.texture = _get_texture_for_type(cargo_type)
+
+
+func _get_texture_for_type(type_name: String) -> Texture2D:
+	match type_name:
+		"CARGO_2":
+			return CARGO_TEXTURE_2
+		"CARGO_3":
+			return CARGO_TEXTURE_3
+		_:
+			return CARGO_TEXTURE_1

@@ -17,28 +17,37 @@ enum TurnMode {
 
 const PREVIEW_CELL_SIZE := 64.0
 const PREVIEW_CENTER := Vector2(PREVIEW_CELL_SIZE * 0.5, PREVIEW_CELL_SIZE * 0.5)
+const STRAIGHT_INTERVAL_1_TEXTURE: Texture2D = preload("res://assets/images/belt_straight_interval_1.png")
+const STRAIGHT_INTERVAL_2_TEXTURE: Texture2D = preload("res://assets/images/belt_straight_interval_2.png")
+const TURN_INTERVAL_1_TEXTURE: Texture2D = preload("res://assets/images/belt_turn_interval_1.png")
+const TURN_INTERVAL_2_TEXTURE: Texture2D = preload("res://assets/images/belt_turn_interval_2.png")
 
 @export var facing: Direction = Direction.RIGHT:
 	set(value):
 		facing = value
+		_update_sprite_visual()
 		queue_redraw()
 
 @export var turn_mode: TurnMode = TurnMode.STRAIGHT:
 	set(value):
 		turn_mode = value
+		_update_sprite_visual()
 		queue_redraw()
 
 @export_range(1, 2, 1) var beat_interval := 2:
 	set(value):
 		beat_interval = clampi(value, 1, 2)
+		_update_sprite_visual()
 		queue_redraw()
 
 var _world: World
 var _registered_cell: Vector2i
 var _is_registered_to_layer := false
+var _sprite: Sprite2D
 
 
 func _ready() -> void:
+	_update_sprite_visual()
 	queue_redraw()
 
 	if Engine.is_editor_hint():
@@ -107,6 +116,51 @@ func _direction_to_offset(direction: Direction) -> Vector2i:
 			return Vector2i.DOWN
 		_:
 			return Vector2i.LEFT
+
+
+func _update_sprite_visual() -> void:
+	if _sprite == null:
+		_sprite = get_node_or_null(^"Sprite2D") as Sprite2D
+
+	if _sprite == null:
+		return
+
+	_sprite.texture = _get_belt_texture()
+	_sprite.rotation_degrees = _get_sprite_rotation_degrees()
+	_sprite.flip_h = turn_mode == TurnMode.LEFT
+	_sprite.flip_v = false
+
+
+func _get_belt_texture() -> Texture2D:
+	if turn_mode == TurnMode.STRAIGHT:
+		if beat_interval == 1:
+			return STRAIGHT_INTERVAL_1_TEXTURE
+
+		return STRAIGHT_INTERVAL_2_TEXTURE
+
+	if beat_interval == 1:
+		return TURN_INTERVAL_1_TEXTURE
+
+	return TURN_INTERVAL_2_TEXTURE
+
+
+func _get_rotation_degrees_for_direction(direction: Direction) -> float:
+	match direction:
+		Direction.UP:
+			return -90.0
+		Direction.RIGHT:
+			return 0.0
+		Direction.DOWN:
+			return 90.0
+		_:
+			return 180.0
+
+
+func _get_sprite_rotation_degrees() -> float:
+	if turn_mode == TurnMode.STRAIGHT:
+		return wrapf(_get_rotation_degrees_for_direction(facing), 0.0, 360.0)
+
+	return wrapf(float(int(facing)) * 90.0, 0.0, 360.0)
 
 #
 #func _draw() -> void:

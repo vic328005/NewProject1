@@ -16,7 +16,7 @@ const CARGO_KEYS := ["type"]
 const ENTITY_KEYS := ["id", "kind", "x", "y", "data"]
 const BELT_FACING_VALUES := ["UP", "RIGHT", "DOWN", "LEFT"]
 const BELT_TURN_MODE_VALUES := ["STRAIGHT", "LEFT", "RIGHT"]
-const CARGO_TYPE_VALUES := ["NORMAL"]
+const CARGO_TYPE_VALUES := ["CARGO_1", "CARGO_2", "CARGO_3"]
 
 var level_id: String = ""
 var display_name: String = ""
@@ -224,7 +224,7 @@ static func _parse_cargo(raw_cargo: Dictionary, cell_label: String, source_label
 	if not _has_non_empty_string(raw_cargo, "type"):
 		return _validation_error(source_label, "%s.type must be a non-empty string" % cargo_label)
 
-	var cargo_type: String = String(raw_cargo["type"])
+	var cargo_type: String = String(raw_cargo["type"]).strip_edges().to_upper()
 	if not CARGO_TYPE_VALUES.has(cargo_type):
 		return _validation_error(source_label, "%s.type must be one of %s" % [cargo_label, CARGO_TYPE_VALUES])
 

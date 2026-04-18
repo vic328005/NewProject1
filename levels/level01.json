@@ -1,0 +1,127 @@
+{
+  "level_id": "level01",
+  "display_name": "环形关卡",
+  "grid_width": 4,
+  "grid_height": 4,
+  "beat_bpm": 120,
+  "cells": [
+    {
+      "x": 0,
+      "y": 0,
+      "belt": {
+        "facing": "UP",
+        "turn_mode": "RIGHT",
+        "beat_interval": 2
+      },
+      "cargo": {
+        "type": "CARGO_1"
+      }
+    },
+    {
+      "x": 1,
+      "y": 0,
+      "belt": {
+        "facing": "RIGHT",
+        "turn_mode": "STRAIGHT",
+        "beat_interval": 2
+      }
+    },
+    {
+      "x": 2,
+      "y": 0,
+      "belt": {
+        "facing": "RIGHT",
+        "turn_mode": "STRAIGHT",
+        "beat_interval": 2
+      }
+    },
+    {
+      "x": 3,
+      "y": 0,
+      "belt": {
+        "facing": "RIGHT",
+        "turn_mode": "RIGHT",
+        "beat_interval": 2
+      }
+    },
+    {
+      "x": 3,
+      "y": 1,
+      "belt": {
+        "facing": "DOWN",
+        "turn_mode": "STRAIGHT",
+        "beat_interval": 2
+      },
+      "cargo": {
+        "type": "CARGO_2"
+      }
+    },
+    {
+      "x": 3,
+      "y": 2,
+      "belt": {
+        "facing": "DOWN",
+        "turn_mode": "STRAIGHT",
+        "beat_interval": 2
+      }
+    },
+    {
+      "x": 3,
+      "y": 3,
+      "belt": {
+        "facing": "DOWN",
+        "turn_mode": "RIGHT",
+        "beat_interval": 2
+      }
+    },
+    {
+      "x": 2,
+      "y": 3,
+      "belt": {
+        "facing": "LEFT",
+        "turn_mode": "STRAIGHT",
+        "beat_interval": 2
+      }
+    },
+    {
+      "x": 1,
+      "y": 3,
+      "belt": {
+        "facing": "LEFT",
+        "turn_mode": "STRAIGHT",
+        "beat_interval": 2
+      },
+      "cargo": {
+        "type": "CARGO_3"
+      }
+    },
+    {
+      "x": 0,
+      "y": 3,
+      "belt": {
+        "facing": "LEFT",
+        "turn_mode": "RIGHT",
+        "beat_interval": 2
+      }
+    },
+    {
+      "x": 0,
+      "y": 2,
+      "belt": {
+        "facing": "UP",
+        "turn_mode": "STRAIGHT",
+        "beat_interval": 2
+      }
+    },
+    {
+      "x": 0,
+      "y": 1,
+      "belt": {
+        "facing": "UP",
+        "turn_mode": "STRAIGHT",
+        "beat_interval": 2
+      }
+    }
+  ],
+  "entities": []
+}
