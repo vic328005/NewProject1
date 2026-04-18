@@ -8,18 +8,18 @@ const RECYCLER_SCENE := preload("res://prefabs/recycler.tscn")
 const SIGNAL_TOWER_SCENE: PackedScene = preload("res://prefabs/signal_tower.tscn")
 
 
-func load_level_file_into_world(level_path: String, world: World, beats: BeatConductor) -> LevelData:
+func load_level_file_into_world(level_path: String, world: World) -> LevelData:
 	var level_data: LevelData = LevelData.load_from_file(level_path)
 	if level_data == null:
 		return null
 
-	if not apply_level_data_to_world(level_data, world, beats):
+	if not apply_level_data_to_world(level_data, world):
 		return null
 
 	return level_data
 
 
-func apply_level_data_to_world(level_data: LevelData, world: World, beats: BeatConductor) -> bool:
+func apply_level_data_to_world(level_data: LevelData, world: World) -> bool:
 	if level_data == null:
 		push_error("Cannot apply a null LevelData instance.")
 		return false
@@ -28,13 +28,8 @@ func apply_level_data_to_world(level_data: LevelData, world: World, beats: BeatC
 		push_error("Cannot apply level data without a World instance.")
 		return false
 
-	if beats == null:
-		push_error("Cannot apply level data without a BeatConductor instance.")
-		return false
-
 	world.clear_level_content()
 	world.apply_level_metadata(level_data)
-	beats.bpm = level_data.beat_bpm
 
 	for cell_data in level_data.cells:
 		var cell: Vector2i = Vector2i(int(cell_data["x"]), int(cell_data["y"]))

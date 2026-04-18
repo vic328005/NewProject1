@@ -4,6 +4,7 @@ class_name GameManager
 var config: Config
 var event: EventBus
 var beats: BeatConductor
+var audio: AudioController = null
 var camera: CameraController = null
 var world: World = null
 var level_loader: LevelLoader
@@ -14,6 +15,7 @@ func _init() -> void:
 	_ensure_event()
 	_ensure_beats()
 	_ensure_level_loader()
+	_init_audio()
 	_init_camera()
 	_init_world()
 
@@ -45,8 +47,11 @@ func _ensure_beats() -> BeatConductor:
 	if is_instance_valid(beats):
 		return beats
 
+	assert(config != null, "Config must be initialized before beat setup.")
+
 	beats = BeatConductor.new()
 	beats.name = "BeatConductor"
+	beats.bpm = config.bpm
 	add_child(beats)
 	return beats
 
@@ -73,6 +78,20 @@ func _init_camera() -> void:
 	camera = camera_instance
 
 
+func _init_audio() -> void:
+	assert(config != null, "Config must be initialized before audio setup.")
+
+	var audio_scene: PackedScene = load(config.audio_scene_uid) as PackedScene
+	assert(audio_scene != null, "Failed to load audio scene: %s" % config.audio_scene_uid)
+
+	var audio_instance: AudioController = audio_scene.instantiate() as AudioController
+	assert(audio_instance != null, "Audio scene root is not an AudioController: %s" % config.audio_scene_uid)
+
+	audio_instance.name = "Audio"
+	add_child(audio_instance)
+	audio = audio_instance
+
+
 func _init_world() -> void:
 	assert(config != null, "Config must be initialized before world setup.")
 
@@ -85,7 +104,7 @@ func _init_world() -> void:
 func _load_start_level() -> void:
 	assert(config != null, "Config must be initialized before loading the start level.")
 
-	var level_data: LevelData = _ensure_level_loader().load_level_file_into_world(config.start_level_path, world, _ensure_beats())
+	var level_data: LevelData = _ensure_level_loader().load_level_file_into_world(config.start_level_path, world)
 	if level_data == null:
 		return
 

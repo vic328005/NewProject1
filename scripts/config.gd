@@ -2,5 +2,7 @@ class_name Config
 extends RefCounted
 
 var start_level_path: String = "res://levels/level03.json"
+var bpm: float = 160.0
 var camera_scene_uid: String = "uid://b6k8wfglqo1sx"
+var audio_scene_uid: String = "uid://c6xsief50rub2"
 var cell_size: int = 64

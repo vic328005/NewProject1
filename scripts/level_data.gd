@@ -77,17 +77,6 @@ static func from_dictionary(raw_data: Dictionary, source_label: String = "<memor
 	if not _has_positive_integer_number(raw_data, "grid_height"):
 		return _validation_error(source_label, "grid_height must be an integer greater than 0")
 
-	if not raw_data.has("beat_bpm"):
-		return _validation_error(source_label, "beat_bpm is required")
-
-	var raw_beat_bpm: Variant = raw_data["beat_bpm"]
-	if typeof(raw_beat_bpm) != TYPE_INT and typeof(raw_beat_bpm) != TYPE_FLOAT:
-		return _validation_error(source_label, "beat_bpm must be a number")
-
-	var normalized_beat_bpm: float = float(raw_beat_bpm)
-	if normalized_beat_bpm <= 0.0:
-		return _validation_error(source_label, "beat_bpm must be greater than 0")
-
 	if not raw_data.has("cells") or typeof(raw_data["cells"]) != TYPE_ARRAY:
 		return _validation_error(source_label, "cells must be an array")
 
@@ -96,7 +85,16 @@ static func from_dictionary(raw_data: Dictionary, source_label: String = "<memor
 	level_data.display_name = String(raw_data["display_name"])
 	level_data.grid_width = int(raw_data["grid_width"])
 	level_data.grid_height = int(raw_data["grid_height"])
-	level_data.beat_bpm = normalized_beat_bpm
+	if raw_data.has("beat_bpm"):
+		var raw_beat_bpm: Variant = raw_data["beat_bpm"]
+		if typeof(raw_beat_bpm) != TYPE_INT and typeof(raw_beat_bpm) != TYPE_FLOAT:
+			return _validation_error(source_label, "beat_bpm must be a number")
+
+		var normalized_beat_bpm: float = float(raw_beat_bpm)
+		if normalized_beat_bpm <= 0.0:
+			return _validation_error(source_label, "beat_bpm must be greater than 0")
+
+		level_data.beat_bpm = normalized_beat_bpm
 
 	var seen_cells: Dictionary = {}
 	var raw_cells: Array = Array(raw_data["cells"])

@@ -1,0 +1,12 @@
+[gd_scene format=3 uid="uid://c6xsief50rub2"]
+
+[ext_resource type="Script" path="res://scripts/audio_controller.gd" id="1_exr5x"]
+[ext_resource type="AudioStream" uid="uid://b4lvbqdajqftx" path="res://assets/audios/4.18.ogg" id="2_axpth"]
+
+[node name="Audio" type="Node2D" unique_id=1924651262 node_paths=PackedStringArray("player")]
+script = ExtResource("1_exr5x")
+player = NodePath("AudioStreamPlayer2D")
+
+[node name="AudioStreamPlayer2D" type="AudioStreamPlayer2D" parent="." unique_id=135157838]
+stream = ExtResource("2_axpth")
+autoplay = true
