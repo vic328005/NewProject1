@@ -1,0 +1,35 @@
+[gd_scene format=3 uid="uid://t78xfurra3mc"]
+
+[ext_resource type="Script" uid="uid://bodbsdkah3hkj" path="res://scripts/ui/demo_panel.gd" id="1_4j8xi"]
+
+[node name="DemoPanel" type="Control" unique_id=1564432801]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_4j8xi")
+
+[node name="Backdrop" type="ColorRect" parent="." unique_id=547825351]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.35)
+
+[node name="Message" type="Label" parent="." unique_id=1915307004]
+layout_mode = 0
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -120.0
+offset_top = -24.0
+offset_right = 120.0
+offset_bottom = 24.0
+text = "Demo Panel"
+horizontal_alignment = 1
+vertical_alignment = 1
