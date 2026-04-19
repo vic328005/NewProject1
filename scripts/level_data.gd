@@ -9,7 +9,7 @@ const TOP_LEVEL_KEYS := [
 	"beat_bpm",
 	"cells",
 ]
-const CELL_KEYS := ["x", "y", "belt", "sorter", "cargo", "producer", "recycler", "signal_tower", "press_machine", "packer"]
+const CELL_KEYS := ["x", "y", "belt", "sorter", "cargo", "producer", "recycler", "signal_tower", "press_machine", "refiner", "packer"]
 const BELT_KEYS := ["facing", "turn_mode", "beat_interval"]
 const SORTER_KEYS := ["input_direction", "initial_output_side"]
 const CARGO_KEYS := ["type"]
@@ -17,11 +17,12 @@ const PRODUCER_KEYS := ["facing", "beat_interval", "cargo_type"]
 const RECYCLER_KEYS: Array = []
 const SIGNAL_TOWER_KEYS: Array = ["max_steps"]
 const PRESS_MACHINE_KEYS := ["facing", "cargo_type", "beat_interval"]
+const REFINER_KEYS := ["facing"]
 const PACKER_KEYS := ["facing"]
 const BELT_FACING_VALUES := ["UP", "RIGHT", "DOWN", "LEFT"]
 const BELT_TURN_MODE_VALUES := ["STRAIGHT", "LEFT", "RIGHT"]
 const SORTER_OUTPUT_SIDE_VALUES := ["LEFT", "RIGHT"]
-const CARGO_TYPE_VALUES := ["CARGO_1", "CARGO_2", "CARGO_3"]
+const CARGO_TYPE_VALUES := ["CARGO_1", "CARGO_2", "CARGO_3", "ADV_CARGO_1", "ADV_CARGO_2", "ADV_CARGO_3"]
 
 var level_id: String = ""
 var display_name: String = ""
@@ -142,20 +143,24 @@ static func _parse_cell(raw_cell: Dictionary, index: int, level_width: int, leve
 	var has_recycler: bool = raw_cell.has("recycler")
 	var has_signal_tower: bool = raw_cell.has("signal_tower")
 	var has_press_machine: bool = raw_cell.has("press_machine")
+	var has_refiner: bool = raw_cell.has("refiner")
 	var has_packer: bool = raw_cell.has("packer")
-	if not has_belt and not has_sorter and not has_cargo and not has_producer and not has_recycler and not has_signal_tower and not has_press_machine and not has_packer:
+	if not has_belt and not has_sorter and not has_cargo and not has_producer and not has_recycler and not has_signal_tower and not has_press_machine and not has_refiner and not has_packer:
 		return _validation_error(source_label, "%s must contain at least one gameplay object" % cell_label)
 
-	if has_signal_tower and (has_belt or has_sorter or has_cargo or has_producer or has_recycler or has_press_machine or has_packer):
+	if has_signal_tower and (has_belt or has_sorter or has_cargo or has_producer or has_recycler or has_press_machine or has_refiner or has_packer):
 		return _validation_error(source_label, "%s.signal_tower must occupy its own cell" % cell_label)
 
-	if has_sorter and (has_belt or has_signal_tower or has_press_machine or has_packer):
+	if has_sorter and (has_belt or has_signal_tower or has_press_machine or has_refiner or has_packer):
 		return _validation_error(source_label, "%s.sorter can only share a cell with cargo, producer, or recycler" % cell_label)
 
-	if has_press_machine and (has_belt or has_sorter or has_producer or has_recycler or has_signal_tower or has_packer):
+	if has_press_machine and (has_belt or has_sorter or has_producer or has_recycler or has_signal_tower or has_refiner or has_packer):
 		return _validation_error(source_label, "%s.press_machine can only share a cell with cargo" % cell_label)
 
-	if has_packer and (has_belt or has_sorter or has_producer or has_recycler or has_signal_tower or has_press_machine):
+	if has_refiner and (has_belt or has_sorter or has_producer or has_recycler or has_signal_tower or has_press_machine or has_packer):
+		return _validation_error(source_label, "%s.refiner can only share a cell with cargo" % cell_label)
+
+	if has_packer and (has_belt or has_sorter or has_producer or has_recycler or has_signal_tower or has_press_machine or has_refiner):
 		return _validation_error(source_label, "%s.packer can only share a cell with cargo" % cell_label)
 
 	var normalized_cell: Dictionary = {
@@ -232,6 +237,16 @@ static func _parse_cell(raw_cell: Dictionary, index: int, level_width: int, leve
 			return null
 
 		normalized_cell["press_machine"] = normalized_press_machine
+
+	if has_refiner:
+		if typeof(raw_cell["refiner"]) != TYPE_DICTIONARY:
+			return _validation_error(source_label, "%s.refiner must be an object" % cell_label)
+
+		var normalized_refiner: Variant = _parse_refiner(raw_cell["refiner"], cell_label, source_label)
+		if normalized_refiner == null:
+			return null
+
+		normalized_cell["refiner"] = normalized_refiner
 
 	if has_packer:
 		if typeof(raw_cell["packer"]) != TYPE_DICTIONARY:
@@ -409,6 +424,23 @@ static func _parse_press_machine(raw_press_machine: Dictionary, cell_label: Stri
 		"facing": facing,
 		"cargo_type": cargo_type,
 		"beat_interval": beat_interval,
+	}
+
+
+static func _parse_refiner(raw_refiner: Dictionary, cell_label: String, source_label: String) -> Variant:
+	var refiner_label: String = "%s.refiner" % cell_label
+	if not _ensure_allowed_keys(raw_refiner, REFINER_KEYS, refiner_label, source_label):
+		return null
+
+	if not _has_non_empty_string(raw_refiner, "facing"):
+		return _validation_error(source_label, "%s.facing must be a non-empty string" % refiner_label)
+
+	var facing: String = String(raw_refiner["facing"]).strip_edges().to_upper()
+	if not BELT_FACING_VALUES.has(facing):
+		return _validation_error(source_label, "%s.facing must be one of %s" % [refiner_label, BELT_FACING_VALUES])
+
+	return {
+		"facing": facing,
 	}
 
 

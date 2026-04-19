@@ -6,6 +6,8 @@ const DEFAULT_CARGO_TYPE: String = "CARGO_1"
 const CARGO_TEXTURE_1: Texture2D = preload("res://assets/images/cargo_1.png")
 const CARGO_TEXTURE_2: Texture2D = preload("res://assets/images/cargo_2.png")
 const CARGO_TEXTURE_3: Texture2D = preload("res://assets/images/cargo_3.png")
+const ADVANCED_FRAME_COLOR: Color = Color(0.97, 0.84, 0.31, 1.0)
+const ADVANCED_CORNER_COLOR: Color = Color(1.0, 0.94, 0.70, 1.0)
 const PACKAGE_FILL_COLOR: Color = Color(0.95, 0.83, 0.57, 0.45)
 const PACKAGE_BORDER_COLOR: Color = Color(0.40, 0.26, 0.12, 1.0)
 const PACKAGE_RIBBON_COLOR_1: Color = Color(0.84, 0.38, 0.24, 1.0)
@@ -32,9 +34,12 @@ var _package_fill: Polygon2D
 var _package_border: Line2D
 var _package_ribbon_horizontal: Line2D
 var _package_ribbon_vertical: Line2D
+var _advanced_frame: Line2D
+var _advanced_corner: Polygon2D
 
 
 func _ready() -> void:
+	_ensure_advanced_overlay()
 	_ensure_package_overlay()
 	_update_visual_state()
 
@@ -171,7 +176,8 @@ func _update_visual_state() -> void:
 	if _sprite == null:
 		return
 
-	_sprite.texture = _get_texture_for_type(cargo_type)
+	_sprite.texture = _get_texture_for_type(_get_base_cargo_type())
+	_update_advanced_overlay()
 	_update_package_overlay()
 
 
@@ -183,6 +189,63 @@ func _get_texture_for_type(type_name: String) -> Texture2D:
 			return CARGO_TEXTURE_3
 		_:
 			return CARGO_TEXTURE_1
+
+
+func _get_base_cargo_type() -> String:
+	match cargo_type:
+		"ADV_CARGO_1":
+			return "CARGO_1"
+		"ADV_CARGO_2":
+			return "CARGO_2"
+		"ADV_CARGO_3":
+			return "CARGO_3"
+		_:
+			return cargo_type
+
+
+func _is_advanced_cargo() -> bool:
+	return cargo_type.begins_with("ADV_")
+
+
+func _ensure_advanced_overlay() -> void:
+	if is_instance_valid(_advanced_frame):
+		return
+
+	# 高级货物不新增贴图，直接在基础纹理上加金色边框和角标。
+	_advanced_frame = _create_package_line(
+		"AdvancedFrame",
+		PackedVector2Array([
+			Vector2(10.0, 10.0),
+			Vector2(54.0, 10.0),
+			Vector2(54.0, 54.0),
+			Vector2(10.0, 54.0),
+			Vector2(10.0, 10.0),
+		]),
+		4.0
+	)
+	_advanced_frame.z_index = 2
+	add_child(_advanced_frame)
+
+	_advanced_corner = Polygon2D.new()
+	_advanced_corner.name = "AdvancedCorner"
+	_advanced_corner.z_index = 3
+	_advanced_corner.polygon = PackedVector2Array([
+		Vector2(38.0, 10.0),
+		Vector2(54.0, 10.0),
+		Vector2(54.0, 26.0),
+	])
+	add_child(_advanced_corner)
+
+
+func _update_advanced_overlay() -> void:
+	if not is_instance_valid(_advanced_frame):
+		return
+
+	var is_advanced: bool = _is_advanced_cargo()
+	_advanced_frame.default_color = ADVANCED_FRAME_COLOR
+	_advanced_frame.visible = is_advanced
+	_advanced_corner.color = ADVANCED_CORNER_COLOR
+	_advanced_corner.visible = is_advanced
 
 
 func _ensure_package_overlay() -> void:
@@ -263,7 +326,7 @@ func _update_package_overlay() -> void:
 
 
 func _get_package_ribbon_color() -> Color:
-	match cargo_type:
+	match _get_base_cargo_type():
 		"CARGO_2":
 			return PACKAGE_RIBBON_COLOR_2
 		"CARGO_3":
