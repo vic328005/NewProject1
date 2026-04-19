@@ -2,6 +2,7 @@ extends Node
 class_name GameManager
 
 const UI_MODULE_SCENE: PackedScene = preload("res://prefabs/ui/ui_module.tscn")
+# 达到这个拍数仍未完成关卡时，直接判定失败。
 const FAILURE_BEAT_LIMIT: int = 60
 
 enum GameState {
@@ -23,10 +24,11 @@ var current_beat: int = 0
 
 
 func _init() -> void:
+	# 按依赖顺序完成核心模块初始化，避免后续生命周期里出现空引用。
 	_init_config()
-	_ensure_event()
-	_ensure_beats()
-	_ensure_level_loader()
+	_init_event()
+	_init_beats()
+	_init_level_loader()
 	_init_audio()
 	_init_camera()
 	_init_world()
@@ -38,11 +40,8 @@ func _ready() -> void:
 	if not beats.beat_fired.is_connected(_on_beat_fired):
 		beats.beat_fired.connect(_on_beat_fired)
 
+	# 启动后先进入主菜单，所有正式流程都从这里开始。
 	_show_main_menu()
-
-
-func emit_event(event_name: StringName, payload: Variant = null) -> void:
-	_ensure_event().emit_event(event_name, payload)
 
 
 func start_game() -> void:
@@ -51,11 +50,13 @@ func start_game() -> void:
 	assert(is_instance_valid(beats), "BeatConductor must exist before starting the game.")
 	assert(is_instance_valid(ui), "UI module must exist before starting the game.")
 
+	# 开局前先清掉菜单、运行时 UI 和上一局残留状态。
 	_close_flow_panels()
 	_close_runtime_ui()
 	_clear_session()
 
-	var level_data: LevelData = _ensure_level_loader().load_level_file_into_world(config.start_level_path, world)
+	assert(level_loader != null, "LevelLoader must be initialized before starting the game.")
+	var level_data: LevelData = level_loader.load_level_file_into_world(config.start_level_path, world)
 	if level_data == null:
 		push_error("Failed to load start level: %s" % config.start_level_path)
 		_show_main_menu()
@@ -69,6 +70,7 @@ func start_game() -> void:
 	current_beat = 0
 	state = GameState.PLAYING
 
+	# 以关卡节奏参数重置节拍器，并打开运行中需要的 UI。
 	beats.reset(level_data.beat_bpm)
 	ui.open(UIDef.metronome_panel)
 	beats.start()
@@ -86,6 +88,7 @@ func finish_game(success: bool) -> void:
 	_close_runtime_ui()
 	_close_menu_panel()
 
+	# 结果面板直接使用本局统计数据进行展示。
 	var panel: ResultPanel = ui.open(UIDef.result_panel) as ResultPanel
 	assert(panel != null, "Result panel scene root is not a ResultPanel.")
 	var total_required_count: int = world.get_total_recycler_required_count()
@@ -112,35 +115,23 @@ func _init_config() -> void:
 	assert(config != null, "Failed to create Config.")
 
 
-func _ensure_event() -> EventBus:
-	if is_instance_valid(event):
-		return event
-
+func _init_event() -> void:
 	event = EventBus.new()
 	event.name = "EventBus"
 	add_child(event)
-	return event
 
 
-func _ensure_beats() -> BeatConductor:
-	if is_instance_valid(beats):
-		return beats
-
+func _init_beats() -> void:
 	assert(config != null, "Config must be initialized before beat setup.")
 
 	beats = BeatConductor.new()
 	beats.name = "BeatConductor"
 	beats.bpm = config.bpm
 	add_child(beats)
-	return beats
 
 
-func _ensure_level_loader() -> LevelLoader:
-	if level_loader != null:
-		return level_loader
-
+func _init_level_loader() -> void:
 	level_loader = LevelLoader.new()
-	return level_loader
 
 
 func _init_camera() -> void:
@@ -196,6 +187,7 @@ func _show_main_menu() -> void:
 	assert(is_instance_valid(beats), "BeatConductor must exist before showing the main menu.")
 	assert(is_instance_valid(ui), "UI module must exist before showing the main menu.")
 
+	# 返回主菜单时统一停掉节拍、关闭结果与运行时界面，并清空关卡内容。
 	beats.stop()
 	_close_result_panel()
 	_close_runtime_ui()
@@ -242,5 +234,6 @@ func _on_beat_fired(beat_index: int, _beat_time: float) -> void:
 		return
 
 	current_beat = beat_index
+	# 超过失败拍数上限后，直接结束当前局。
 	if current_beat >= FAILURE_BEAT_LIMIT:
 		finish_game(false)
