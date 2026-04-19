@@ -22,8 +22,6 @@ var recycler_layer: MapLayer
 var signal_tower_layer: MapLayer
 # 冲压机层：记录会压制/输出货物的机器。
 var press_machine_layer: MapLayer
-# 精炼机层：记录会转换货物类型的精炼器。
-var refiner_layer: MapLayer
 # 打包机层：记录会将货物推进行走位移的打包设备。
 var packer_layer: MapLayer
 # 世界环境节点，用于承载背景和装饰内容。
@@ -176,7 +174,6 @@ func _init_layers() -> void:
 	recycler_layer = _create_layer()
 	signal_tower_layer = _create_layer()
 	press_machine_layer = _create_layer()
-	refiner_layer = _create_layer()
 	packer_layer = _create_layer()
 
 
@@ -190,7 +187,6 @@ func _clear_layers() -> void:
 	recycler_layer.clear()
 	signal_tower_layer.clear()
 	press_machine_layer.clear()
-	refiner_layer.clear()
 	packer_layer.clear()
 
 

@@ -3,7 +3,6 @@ extends RefCounted
 
 const TRIGGERED_SORTERS_KEY: StringName = &"sorters"
 const TRIGGERED_PRESS_MACHINES_KEY: StringName = &"press_machines"
-const TRIGGERED_REFINERS_KEY: StringName = &"refiners"
 const TRIGGERED_PACKERS_KEY: StringName = &"packers"
 
 var _world: World
@@ -27,7 +26,6 @@ func collect_triggered_devices() -> Dictionary:
 	return {
 		TRIGGERED_SORTERS_KEY: _collect_triggered_sorters(),
 		TRIGGERED_PRESS_MACHINES_KEY: _collect_triggered_press_machines(),
-		TRIGGERED_REFINERS_KEY: _collect_triggered_refiners(),
 		TRIGGERED_PACKERS_KEY: _collect_triggered_packers(),
 	}
 
@@ -115,25 +113,6 @@ func _collect_triggered_press_machines() -> Dictionary:
 			triggered_press_machines[cell] = press_machine
 
 	return triggered_press_machines
-
-
-# 收集当前生效信号波命中的精炼机节点。
-func _collect_triggered_refiners() -> Dictionary:
-	var triggered_refiners: Dictionary = {}
-
-	for signal_wave in _active_signals:
-		if signal_wave == null or not is_instance_valid(signal_wave):
-			continue
-
-		var wave_cells: Array[Vector2i] = signal_wave.get_wave_cells()
-		for cell in wave_cells:
-			var refiner: Refiner = _world.refiner_layer.get_cell(cell) as Refiner
-			if refiner == null or not is_instance_valid(refiner):
-				continue
-
-			triggered_refiners[cell] = refiner
-
-	return triggered_refiners
 
 
 # 收集当前生效信号波命中的打包机及当拍初始货物快照。

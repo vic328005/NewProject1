@@ -126,7 +126,7 @@ func _init_beats() -> void:
 
 	beats = BeatConductor.new()
 	beats.name = "BeatConductor"
-	beats.bpm = config.bpm
+	beats.set_bpm(config.bpm)
 	add_child(beats)
 
 

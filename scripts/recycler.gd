@@ -118,14 +118,12 @@ func _draw() -> void:
 
 
 func _draw_target_icon() -> void:
-	var cargo_texture: Texture2D = _get_texture_for_type(_get_base_cargo_type())
+	var cargo_texture: Texture2D = _get_texture_for_type(cargo_type)
 	if cargo_texture == null:
 		return
 
 	var icon_rect: Rect2 = Rect2(Vector2(16.0, -18.0), ICON_SIZE)
 	draw_texture_rect(cargo_texture, icon_rect, false)
-	if _is_advanced_cargo():
-		draw_rect(icon_rect.grow(2.0), COMPLETE_RING_COLOR, false, 3.0)
 
 
 func _draw_count_badge() -> void:
@@ -170,18 +168,3 @@ func _get_texture_for_type(type_name: String) -> Texture2D:
 		_:
 			return CARGO_TEXTURE_1
 
-
-func _get_base_cargo_type() -> String:
-	match cargo_type:
-		"ADV_CARGO_1":
-			return "CARGO_1"
-		"ADV_CARGO_2":
-			return "CARGO_2"
-		"ADV_CARGO_3":
-			return "CARGO_3"
-		_:
-			return cargo_type
-
-
-func _is_advanced_cargo() -> bool:
-	return cargo_type.begins_with("ADV_")

@@ -8,7 +8,6 @@ const PRODUCER_SCENE := preload("res://prefabs/producer.tscn")
 const RECYCLER_SCENE := preload("res://prefabs/recycler.tscn")
 const SIGNAL_TOWER_SCENE: PackedScene = preload("res://prefabs/signal_tower.tscn")
 const PRESS_MACHINE_SCENE: PackedScene = preload("res://prefabs/press_machine.tscn")
-const REFINER_SCENE: PackedScene = preload("res://prefabs/refiner.tscn")
 const PACKER_SCENE: PackedScene = preload("res://prefabs/packer.tscn")
 
 
@@ -67,11 +66,6 @@ func apply_level_data_to_world(level_data: LevelData, world: World) -> bool:
 			var press_machine_data: Dictionary = Dictionary(cell_data["press_machine"])
 			var press_machine: PressMachine = _create_press_machine(cell, press_machine_data, world)
 			world.add_level_content(press_machine)
-
-		if cell_data.has("refiner"):
-			var refiner_data: Dictionary = Dictionary(cell_data["refiner"])
-			var refiner: Refiner = _create_refiner(cell, refiner_data, world)
-			world.add_level_content(refiner)
 
 		if cell_data.has("packer"):
 			var packer_data: Dictionary = Dictionary(cell_data["packer"])
@@ -142,13 +136,6 @@ func _create_press_machine(cell: Vector2i, press_machine_data: Dictionary, world
 	press_machine.cargo_type = String(press_machine_data["cargo_type"])
 	press_machine.beat_interval = int(press_machine_data["beat_interval"])
 	return press_machine
-
-
-func _create_refiner(cell: Vector2i, refiner_data: Dictionary, world: World) -> Refiner:
-	var refiner: Refiner = REFINER_SCENE.instantiate() as Refiner
-	refiner.position = world.cell_to_world(cell)
-	refiner.facing = _to_refiner_direction(String(refiner_data["facing"]))
-	return refiner
 
 
 func _create_packer(cell: Vector2i, packer_data: Dictionary, world: World) -> Packer:
@@ -222,18 +209,6 @@ func _to_press_machine_direction(direction_name: String) -> PressMachine.Directi
 			return PressMachine.Direction.DOWN
 		_:
 			return PressMachine.Direction.LEFT
-
-
-func _to_refiner_direction(direction_name: String) -> Refiner.Direction:
-	match direction_name:
-		"UP":
-			return Refiner.Direction.UP
-		"RIGHT":
-			return Refiner.Direction.RIGHT
-		"DOWN":
-			return Refiner.Direction.DOWN
-		_:
-			return Refiner.Direction.LEFT
 
 
 func _to_packer_direction(direction_name: String) -> Packer.Direction:

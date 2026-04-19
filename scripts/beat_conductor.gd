@@ -3,13 +3,11 @@ class_name BeatConductor
 
 signal beat_fired(beat_index: int, beat_time: float)
 
-@export_range(1.0, 240.0, 1.0) var bpm: float = 60.0:
-	set(value):
-		bpm = clampf(float(value), 1.0, 240.0)
-		if is_instance_valid(_beat_timer):
-			_beat_timer.wait_time = get_beat_interval_seconds()
-			if not _beat_timer.is_stopped():
-				_beat_timer.start()
+const MIN_BPM: float = 1.0
+const MAX_BPM: float = 240.0
+const DEFAULT_BPM: float = 60.0
+
+var _bpm: float = DEFAULT_BPM
 
 var _beat_index: int = 0
 var _beat_timer: Timer
@@ -18,12 +16,25 @@ var _is_running: bool = false
 
 
 func _ready() -> void:
-	add_to_group("beat_conductors")
 	_start_beat_timer()
 
 
+func set_bpm(value: float) -> void:
+	_bpm = clampf(float(value), MIN_BPM, MAX_BPM)
+	if not is_instance_valid(_beat_timer):
+		return
+
+	_beat_timer.wait_time = get_beat_interval_seconds()
+	if not _beat_timer.is_stopped():
+		_beat_timer.start()
+
+
+func get_bpm() -> float:
+	return _bpm
+
+
 func get_beat_interval_seconds() -> float:
-	return 60.0 / bpm
+	return 60.0 / _bpm
 
 
 func get_current_beat_index() -> int:
@@ -50,8 +61,9 @@ func get_beat_progress(now_time: float = -1.0) -> float:
 
 func reset(next_bpm: float = -1.0) -> void:
 	_beat_index = 0
-	var target_bpm: float = bpm if next_bpm <= 0.0 else next_bpm
-	bpm = target_bpm
+	if next_bpm > 0.0:
+		_bpm = clampf(float(next_bpm), MIN_BPM, MAX_BPM)
+
 	_last_beat_time_seconds = _get_time_seconds()
 
 	if not is_instance_valid(_beat_timer):

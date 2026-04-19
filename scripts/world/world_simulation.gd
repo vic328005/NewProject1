@@ -3,7 +3,6 @@ extends RefCounted
 
 const TRIGGERED_SORTERS_KEY: StringName = &"sorters"
 const TRIGGERED_PRESS_MACHINES_KEY: StringName = &"press_machines"
-const TRIGGERED_REFINERS_KEY: StringName = &"refiners"
 const TRIGGERED_PACKERS_KEY: StringName = &"packers"
 
 var _world: World
@@ -14,18 +13,16 @@ func _init(world: World) -> void:
 	_world = world
 
 
-# 拍点触发时执行完整结算流程：产出、运输、打包、精炼、压制、回收。
+# 拍点触发时执行完整结算流程：产出、运输、打包、压制、回收。
 func resolve_beat(beat_index: int, triggered_devices: Dictionary) -> void:
 	# 单拍内按固定顺序结算，避免运输、加工、回收之间互相抢状态。
 	var triggered_sorters: Dictionary = triggered_devices.get(TRIGGERED_SORTERS_KEY, {})
 	var triggered_press_machines: Dictionary = triggered_devices.get(TRIGGERED_PRESS_MACHINES_KEY, {})
-	var triggered_refiners: Dictionary = triggered_devices.get(TRIGGERED_REFINERS_KEY, {})
 	var triggered_packers: Dictionary = triggered_devices.get(TRIGGERED_PACKERS_KEY, {})
 	_resolve_producer_spawns(beat_index)
 	_toggle_triggered_sorters(triggered_sorters)
 	_resolve_transport(beat_index, triggered_press_machines)
 	_resolve_packers(beat_index, triggered_packers)
-	_resolve_refiners(beat_index, triggered_refiners)
 	_resolve_press_machines(beat_index, triggered_press_machines)
 	_resolve_recycler_collection()
 
@@ -280,51 +277,6 @@ func _resolve_packers(beat_index: int, triggered_packers: Dictionary) -> void:
 			continue
 
 		cargo.is_packaged = true
-		cargo.mark_resolved_on_beat(beat_index)
-
-		var target_cell: Vector2i = request["target_cell"]
-		if int(target_counts.get(target_cell, 0)) != 1:
-			continue
-
-		if _world.cargo_layer.has_cell(target_cell):
-			continue
-
-		cargo.move_to_cell(target_cell)
-
-
-# 处理精炼机在本拍内的状态转换与输出动作。
-func _resolve_refiners(beat_index: int, triggered_refiners: Dictionary) -> void:
-	var refiner_cells: Dictionary = _world.refiner_layer.get_cells()
-	var output_requests: Array[Dictionary] = []
-	var target_counts: Dictionary = {}
-
-	for cell in refiner_cells.keys():
-		var refiner: Refiner = refiner_cells[cell] as Refiner
-		if refiner == null or not is_instance_valid(refiner):
-			continue
-
-		var did_trigger: bool = refiner.resolve_signal_state(beat_index, triggered_refiners.has(cell))
-		if not did_trigger:
-			continue
-
-		var cargo: Cargo = _world.cargo_layer.get_cell(cell) as Cargo
-		if cargo == null or not is_instance_valid(cargo):
-			continue
-
-		cargo.cargo_type = refiner.get_refined_cargo_type(cargo.cargo_type)
-		var target_cell: Vector2i = refiner.get_target_cell()
-		output_requests.append({
-			"cargo": cargo,
-			"target_cell": target_cell,
-		})
-
-		target_counts[target_cell] = int(target_counts.get(target_cell, 0)) + 1
-
-	for request in output_requests:
-		var cargo: Cargo = request["cargo"] as Cargo
-		if cargo == null or not is_instance_valid(cargo):
-			continue
-
 		cargo.mark_resolved_on_beat(beat_index)
 
 		var target_cell: Vector2i = request["target_cell"]
