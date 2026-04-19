@@ -7,6 +7,7 @@ const PRODUCER_SCENE := preload("res://prefabs/producer.tscn")
 const RECYCLER_SCENE := preload("res://prefabs/recycler.tscn")
 const SIGNAL_TOWER_SCENE: PackedScene = preload("res://prefabs/signal_tower.tscn")
 const PRESS_MACHINE_SCENE: PackedScene = preload("res://prefabs/press_machine.tscn")
+const PACKER_SCENE: PackedScene = preload("res://prefabs/packer.tscn")
 
 
 func load_level_file_into_world(level_path: String, world: World) -> LevelData:
@@ -59,6 +60,11 @@ func apply_level_data_to_world(level_data: LevelData, world: World) -> bool:
 			var press_machine_data: Dictionary = Dictionary(cell_data["press_machine"])
 			var press_machine: PressMachine = _create_press_machine(cell, press_machine_data, world)
 			world.add_level_content(press_machine)
+
+		if cell_data.has("packer"):
+			var packer_data: Dictionary = Dictionary(cell_data["packer"])
+			var packer: Packer = _create_packer(cell, packer_data, world)
+			world.add_level_content(packer)
 
 		if cell_data.has("cargo"):
 			var cargo_data: Dictionary = Dictionary(cell_data["cargo"])
@@ -116,6 +122,13 @@ func _create_press_machine(cell: Vector2i, press_machine_data: Dictionary, world
 	return press_machine
 
 
+func _create_packer(cell: Vector2i, packer_data: Dictionary, world: World) -> Packer:
+	var packer: Packer = PACKER_SCENE.instantiate() as Packer
+	packer.position = world.cell_to_world(cell)
+	packer.facing = _to_packer_direction(String(packer_data["facing"]))
+	return packer
+
+
 func _to_belt_direction(direction_name: String) -> Belt.Direction:
 	match direction_name:
 		"UP":
@@ -160,3 +173,15 @@ func _to_press_machine_direction(direction_name: String) -> PressMachine.Directi
 			return PressMachine.Direction.DOWN
 		_:
 			return PressMachine.Direction.LEFT
+
+
+func _to_packer_direction(direction_name: String) -> Packer.Direction:
+	match direction_name:
+		"UP":
+			return Packer.Direction.UP
+		"RIGHT":
+			return Packer.Direction.RIGHT
+		"DOWN":
+			return Packer.Direction.DOWN
+		_:
+			return Packer.Direction.LEFT

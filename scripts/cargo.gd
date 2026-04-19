@@ -6,11 +6,21 @@ const DEFAULT_CARGO_TYPE: String = "CARGO_1"
 const CARGO_TEXTURE_1: Texture2D = preload("res://assets/images/cargo_1.png")
 const CARGO_TEXTURE_2: Texture2D = preload("res://assets/images/cargo_2.png")
 const CARGO_TEXTURE_3: Texture2D = preload("res://assets/images/cargo_3.png")
+const PACKAGE_FILL_COLOR: Color = Color(0.95, 0.83, 0.57, 0.45)
+const PACKAGE_BORDER_COLOR: Color = Color(0.40, 0.26, 0.12, 1.0)
+const PACKAGE_RIBBON_COLOR_1: Color = Color(0.84, 0.38, 0.24, 1.0)
+const PACKAGE_RIBBON_COLOR_2: Color = Color(0.26, 0.68, 0.42, 1.0)
+const PACKAGE_RIBBON_COLOR_3: Color = Color(0.36, 0.44, 0.90, 1.0)
 
 @export var cargo_type: String = DEFAULT_CARGO_TYPE:
 	set(value):
 		cargo_type = _normalize_cargo_type(value)
-		_update_sprite_texture()
+		_update_visual_state()
+
+@export var is_packaged: bool = false:
+	set(value):
+		is_packaged = value
+		_update_visual_state()
 
 var _world: World
 var _registered_cell: Vector2i
@@ -18,10 +28,15 @@ var _is_registered_to_layer := false
 var _move_tween: Tween
 var last_resolved_beat: int = -1
 @onready var _sprite: Sprite2D = $Sprite2D
+var _package_fill: Polygon2D
+var _package_border: Line2D
+var _package_ribbon_horizontal: Line2D
+var _package_ribbon_vertical: Line2D
 
 
 func _ready() -> void:
-	_update_sprite_texture()
+	_ensure_package_overlay()
+	_update_visual_state()
 
 	if _world == null:
 		_world = GM.world
@@ -152,11 +167,12 @@ static func _normalize_cargo_type(value: Variant) -> String:
 	return normalized_value if not normalized_value.is_empty() else DEFAULT_CARGO_TYPE
 
 
-func _update_sprite_texture() -> void:
+func _update_visual_state() -> void:
 	if _sprite == null:
 		return
 
 	_sprite.texture = _get_texture_for_type(cargo_type)
+	_update_package_overlay()
 
 
 func _get_texture_for_type(type_name: String) -> Texture2D:
@@ -167,3 +183,90 @@ func _get_texture_for_type(type_name: String) -> Texture2D:
 			return CARGO_TEXTURE_3
 		_:
 			return CARGO_TEXTURE_1
+
+
+func _ensure_package_overlay() -> void:
+	if is_instance_valid(_package_fill):
+		return
+
+	# 包装层直接复用几何图形，避免新增贴图资源。
+	_package_fill = Polygon2D.new()
+	_package_fill.name = "PackageFill"
+	_package_fill.z_index = 2
+	_package_fill.polygon = PackedVector2Array([
+		Vector2(14.0, 14.0),
+		Vector2(50.0, 14.0),
+		Vector2(50.0, 50.0),
+		Vector2(14.0, 50.0),
+	])
+	add_child(_package_fill)
+
+	_package_border = _create_package_line(
+		"PackageBorder",
+		PackedVector2Array([
+			Vector2(14.0, 14.0),
+			Vector2(50.0, 14.0),
+			Vector2(50.0, 50.0),
+			Vector2(14.0, 50.0),
+			Vector2(14.0, 14.0),
+		]),
+		3.0
+	)
+	_package_border.z_index = 3
+	add_child(_package_border)
+
+	_package_ribbon_horizontal = _create_package_line(
+		"PackageRibbonHorizontal",
+		PackedVector2Array([
+			Vector2(16.0, 32.0),
+			Vector2(48.0, 32.0),
+		]),
+		4.0
+	)
+	_package_ribbon_horizontal.z_index = 4
+	add_child(_package_ribbon_horizontal)
+
+	_package_ribbon_vertical = _create_package_line(
+		"PackageRibbonVertical",
+		PackedVector2Array([
+			Vector2(32.0, 16.0),
+			Vector2(32.0, 48.0),
+		]),
+		4.0
+	)
+	_package_ribbon_vertical.z_index = 4
+	add_child(_package_ribbon_vertical)
+
+
+func _create_package_line(line_name: String, points: PackedVector2Array, width: float) -> Line2D:
+	var line: Line2D = Line2D.new()
+	line.name = line_name
+	line.points = points
+	line.width = width
+	line.antialiased = true
+	return line
+
+
+func _update_package_overlay() -> void:
+	if not is_instance_valid(_package_fill):
+		return
+
+	var ribbon_color: Color = _get_package_ribbon_color()
+	_package_fill.color = PACKAGE_FILL_COLOR
+	_package_fill.visible = is_packaged
+	_package_border.default_color = PACKAGE_BORDER_COLOR
+	_package_border.visible = is_packaged
+	_package_ribbon_horizontal.default_color = ribbon_color
+	_package_ribbon_horizontal.visible = is_packaged
+	_package_ribbon_vertical.default_color = ribbon_color
+	_package_ribbon_vertical.visible = is_packaged
+
+
+func _get_package_ribbon_color() -> Color:
+	match cargo_type:
+		"CARGO_2":
+			return PACKAGE_RIBBON_COLOR_2
+		"CARGO_3":
+			return PACKAGE_RIBBON_COLOR_3
+		_:
+			return PACKAGE_RIBBON_COLOR_1
