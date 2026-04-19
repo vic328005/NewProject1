@@ -13,6 +13,7 @@ signal beat_fired(beat_index: int, beat_time: float)
 
 var _beat_index: int = 0
 var _beat_timer: Timer
+var _last_beat_time_seconds: float = 0.0
 
 
 func _ready() -> void:
@@ -28,6 +29,35 @@ func get_current_beat_index() -> int:
 	return _beat_index
 
 
+func get_beat_progress(now_time: float = -1.0) -> float:
+	if not is_instance_valid(_beat_timer):
+		return 0.0
+
+	var sample_time: float = now_time
+	if sample_time < 0.0:
+		sample_time = _get_time_seconds()
+
+	var interval_seconds: float = get_beat_interval_seconds()
+	if interval_seconds <= 0.0:
+		return 0.0
+
+	return clampf((sample_time - _last_beat_time_seconds) / interval_seconds, 0.0, 1.0)
+
+
+func reset(next_bpm: float = -1.0) -> void:
+	_beat_index = 0
+	var target_bpm: float = bpm if next_bpm <= 0.0 else next_bpm
+	bpm = target_bpm
+	_last_beat_time_seconds = _get_time_seconds()
+
+	if not is_instance_valid(_beat_timer):
+		return
+
+	_beat_timer.stop()
+	_beat_timer.wait_time = get_beat_interval_seconds()
+	_beat_timer.start()
+
+
 func _start_beat_timer() -> void:
 	if is_instance_valid(_beat_timer):
 		return
@@ -38,10 +68,16 @@ func _start_beat_timer() -> void:
 	_beat_timer.autostart = true
 	_beat_timer.timeout.connect(_on_beat_timer_timeout)
 	add_child(_beat_timer)
+	_last_beat_time_seconds = _get_time_seconds()
 
 
 func _on_beat_timer_timeout() -> void:
 	_beat_index += 1
-	var beat_time: float = Time.get_ticks_msec() / 1000.0
+	var beat_time: float = _get_time_seconds()
+	_last_beat_time_seconds = beat_time
 	print("Beat fired: %d at %.3f" % [_beat_index, beat_time])
 	beat_fired.emit(_beat_index, beat_time)
+
+
+func _get_time_seconds() -> float:
+	return Time.get_ticks_msec() / 1000.0

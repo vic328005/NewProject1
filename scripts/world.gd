@@ -129,25 +129,6 @@ func _on_beat_fired(beat_index: int, _beat_time: float) -> void:
 	_resolve_recycler_collection()
 	_resolve_signals(beat_index)
 
-
-func _unhandled_key_input(event: InputEvent) -> void:
-	if GM.world != self:
-		return
-
-	if not (event is InputEventKey):
-		return
-
-	var key_event: InputEventKey = event as InputEventKey
-	if key_event == null or not key_event.pressed or key_event.echo:
-		return
-
-	if key_event.keycode != KEY_SPACE and key_event.physical_keycode != KEY_SPACE:
-		return
-
-	_emit_signal_towers_for_current_beat()
-	get_viewport().set_input_as_handled()
-
-
 func is_cell_in_bounds(cell: Vector2i) -> bool:
 	return cell.x >= 0 and cell.x < grid_width and cell.y >= 0 and cell.y < grid_height
 
@@ -259,16 +240,15 @@ func _resolve_signals(beat_index: int) -> void:
 		signal_wave.remove_from_world()
 
 
-func _emit_signal_towers_for_current_beat() -> void:
+func try_emit_signal_towers_for_current_beat() -> bool:
 	var current_beat_index: int = 0
 	if is_instance_valid(_beats):
 		current_beat_index = _beats.get_current_beat_index()
 
 	if current_beat_index == _last_signal_emit_beat_index:
-		return
+		return false
 
-	_last_signal_emit_beat_index = current_beat_index
-
+	var emitted: bool = false
 	var signal_tower_cells: Dictionary = signal_tower_layer.get_cells()
 	for cell in signal_tower_cells.keys():
 		var signal_tower: SignalTower = signal_tower_cells[cell] as SignalTower
@@ -278,3 +258,10 @@ func _emit_signal_towers_for_current_beat() -> void:
 		var signal_wave: SignalWave = signal_tower.create_signal_wave(current_beat_index)
 		_active_signals.append(signal_wave)
 		add_level_content(signal_wave)
+		emitted = true
+
+	if not emitted:
+		return false
+
+	_last_signal_emit_beat_index = current_beat_index
+	return true

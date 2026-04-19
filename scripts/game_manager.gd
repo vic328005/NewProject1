@@ -122,3 +122,9 @@ func _load_start_level() -> void:
 	var level_data: LevelData = _ensure_level_loader().load_level_file_into_world(config.start_level_path, world)
 	if level_data == null:
 		return
+
+	assert(is_instance_valid(beats), "BeatConductor must exist before loading runtime UI.")
+	beats.reset(level_data.beat_bpm)
+
+	assert(is_instance_valid(ui), "UI module must exist before opening runtime panels.")
+	ui.open(UIDef.metronome_panel)

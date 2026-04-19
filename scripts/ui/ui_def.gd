@@ -6,11 +6,11 @@ enum UIOpenPolicy {
 	MULTI,
 }
 
-const DEMO_PANEL_SCENE: PackedScene = preload("res://prefabs/ui/demo_panel.tscn")
+const METRONOME_PANEL_SCENE: PackedScene = preload("res://prefabs/ui/metronome_panel.tscn")
 
-static var demo_panel: UIInfo = UIInfo.new(
-	&"demo_panel",
-	DEMO_PANEL_SCENE,
+static var metronome_panel: UIInfo = UIInfo.new(
+	&"metronome_panel",
+	METRONOME_PANEL_SCENE,
 	0,
 	UIOpenPolicy.SINGLE
 )
