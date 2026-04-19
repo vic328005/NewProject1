@@ -3,6 +3,7 @@
 [ext_resource type="Script" uid="uid://7ek6ixu0rcti" path="res://scripts/camera_controller.gd" id="1_70n02"]
 
 [node name="Camera" type="Node2D" unique_id=251404266 node_paths=PackedStringArray("camera")]
+position = Vector2(960, 540)
 script = ExtResource("1_70n02")
 camera = NodePath("Camera2D")
 

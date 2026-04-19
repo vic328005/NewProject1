@@ -2,6 +2,7 @@ class_name World
 extends Node2D
 
 const CARGO_SCENE: PackedScene = preload("res://prefabs/cargo.tscn")
+const ENVIRONMENT_SCENE: PackedScene = preload("res://prefabs/environment.tscn")
 
 var main_layer: MapLayer
 var cargo_layer: MapLayer
@@ -9,6 +10,7 @@ var belt_layer: MapLayer
 var producer_layer: MapLayer
 var recycler_layer: MapLayer
 var signal_tower_layer: MapLayer
+var environment: Node2D
 var level_id: String = ""
 var display_name: String = ""
 var grid_width: int = 0
@@ -28,6 +30,7 @@ func _init(config: Config) -> void:
 	producer_layer = _create_layer()
 	recycler_layer = _create_layer()
 	signal_tower_layer = _create_layer()
+	_init_environment()
 
 
 func _enter_tree() -> void:
@@ -105,6 +108,13 @@ func apply_level_metadata(level_data: LevelData) -> void:
 func add_level_content(node: Node) -> void:
 	node.add_to_group("runtime_level_content")
 	add_child(node)
+
+
+func _init_environment() -> void:
+	environment = ENVIRONMENT_SCENE.instantiate() as Node2D
+	assert(environment != null, "Environment scene root must be a Node2D.")
+	environment.name = "Environment"
+	add_child(environment)
 
 
 func _create_layer() -> MapLayer:

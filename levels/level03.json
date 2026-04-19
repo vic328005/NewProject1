@@ -1,13 +1,13 @@
 {
   "level_id": "level03",
   "display_name": "信号塔走廊测试",
-  "grid_width": 16,
+  "grid_width": 18,
   "grid_height": 11,
   "beat_bpm": 120,
   "cells": [
     {
-      "x": 0,
-      "y": 0,
+      "x": 9,
+      "y": 6,
       "producer": {
         "facing": "DOWN",
         "beat_interval": 2,
@@ -15,26 +15,8 @@
       }
     },
     {
-      "x": 0,
-      "y": 1,
-      "belt": {
-        "facing": "DOWN",
-        "turn_mode": "STRAIGHT",
-        "beat_interval": 2
-      }
-    },
-    {
-      "x": 0,
-      "y": 2,
-      "belt": {
-        "facing": "DOWN",
-        "turn_mode": "STRAIGHT",
-        "beat_interval": 2
-      }
-    },
-    {
-      "x": 0,
-      "y": 3,
+      "x": 9,
+      "y": 7,
       "belt": {
         "facing": "DOWN",
         "turn_mode": "LEFT",
@@ -42,89 +24,8 @@
       }
     },
     {
-      "x": 1,
-      "y": 3,
-      "belt": {
-        "facing": "RIGHT",
-        "turn_mode": "STRAIGHT",
-        "beat_interval": 2
-      }
-    },
-    {
-      "x": 2,
-      "y": 3,
-      "belt": {
-        "facing": "RIGHT",
-        "turn_mode": "STRAIGHT",
-        "beat_interval": 2
-      }
-    },
-    {
-      "x": 3,
-      "y": 3,
-      "belt": {
-        "facing": "RIGHT",
-        "turn_mode": "STRAIGHT",
-        "beat_interval": 2
-      }
-    },
-    {
-      "x": 4,
-      "y": 3,
-      "belt": {
-        "facing": "RIGHT",
-        "turn_mode": "STRAIGHT",
-        "beat_interval": 2
-      }
-    },
-    {
-      "x": 5,
-      "y": 3,
-      "belt": {
-        "facing": "RIGHT",
-        "turn_mode": "STRAIGHT",
-        "beat_interval": 2
-      }
-    },
-    {
-      "x": 6,
-      "y": 3,
-      "belt": {
-        "facing": "RIGHT",
-        "turn_mode": "STRAIGHT",
-        "beat_interval": 2
-      }
-    },
-    {
-      "x": 7,
-      "y": 3,
-      "belt": {
-        "facing": "RIGHT",
-        "turn_mode": "STRAIGHT",
-        "beat_interval": 2
-      }
-    },
-    {
-      "x": 8,
-      "y": 3,
-      "belt": {
-        "facing": "RIGHT",
-        "turn_mode": "STRAIGHT",
-        "beat_interval": 2
-      }
-    },
-    {
-      "x": 9,
-      "y": 3,
-      "belt": {
-        "facing": "RIGHT",
-        "turn_mode": "STRAIGHT",
-        "beat_interval": 2
-      }
-    },
-    {
       "x": 10,
-      "y": 3,
+      "y": 7,
       "belt": {
         "facing": "RIGHT",
         "turn_mode": "STRAIGHT",
@@ -133,7 +34,7 @@
     },
     {
       "x": 11,
-      "y": 3,
+      "y": 7,
       "belt": {
         "facing": "RIGHT",
         "turn_mode": "STRAIGHT",
@@ -142,7 +43,7 @@
     },
     {
       "x": 12,
-      "y": 3,
+      "y": 7,
       "belt": {
         "facing": "RIGHT",
         "turn_mode": "STRAIGHT",
@@ -151,7 +52,7 @@
     },
     {
       "x": 13,
-      "y": 3,
+      "y": 7,
       "belt": {
         "facing": "RIGHT",
         "turn_mode": "STRAIGHT",
@@ -160,7 +61,7 @@
     },
     {
       "x": 14,
-      "y": 3,
+      "y": 7,
       "belt": {
         "facing": "RIGHT",
         "turn_mode": "STRAIGHT",
@@ -169,12 +70,30 @@
     },
     {
       "x": 15,
-      "y": 3,
+      "y": 7,
+      "belt": {
+        "facing": "RIGHT",
+        "turn_mode": "STRAIGHT",
+        "beat_interval": 2
+      }
+    },
+    {
+      "x": 16,
+      "y": 7,
+      "belt": {
+        "facing": "RIGHT",
+        "turn_mode": "STRAIGHT",
+        "beat_interval": 2
+      }
+    },
+    {
+      "x": 17,
+      "y": 7,
       "recycler": {}
     },
     {
-      "x": 8,
-      "y": 7,
+      "x": 13,
+      "y": 9,
       "signal_tower": {
         "max_steps": 10
       }

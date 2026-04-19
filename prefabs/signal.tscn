@@ -1,6 +1,0 @@
-[gd_scene format=3 uid="uid://cafrevyv2xy43"]
-
-[ext_resource type="Script" path="res://scripts/signal.gd" id="1_signal"]
-
-[node name="Signal" type="Node2D" unique_id=824119057]
-script = ExtResource("1_signal")
