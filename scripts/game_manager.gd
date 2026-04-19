@@ -2,6 +2,14 @@ extends Node
 class_name GameManager
 
 const UI_MODULE_SCENE: PackedScene = preload("res://prefabs/ui/ui_module.tscn")
+const TARGET_RECYCLED_COUNT: int = 3
+const FAILURE_BEAT_LIMIT: int = 60
+
+enum GameState {
+	MENU,
+	PLAYING,
+	RESULT,
+}
 
 var config: Config
 var event: EventBus
@@ -11,6 +19,9 @@ var camera: CameraController = null
 var world: World = null
 var ui: UiModule = null
 var level_loader: LevelLoader
+var state: int = GameState.MENU
+var recycled_count: int = 0
+var current_beat: int = 0
 
 
 func _init() -> void:
@@ -25,11 +36,77 @@ func _init() -> void:
 
 
 func _ready() -> void:
-	_load_start_level()
+	assert(is_instance_valid(beats), "BeatConductor must exist before GameManager._ready.")
+	if not beats.beat_fired.is_connected(_on_beat_fired):
+		beats.beat_fired.connect(_on_beat_fired)
+
+	_show_main_menu()
 
 
 func emit_event(event_name: StringName, payload: Variant = null) -> void:
 	_ensure_event().emit_event(event_name, payload)
+
+
+func start_game() -> void:
+	assert(config != null, "Config must be initialized before starting the game.")
+	assert(is_instance_valid(world), "World must exist before starting the game.")
+	assert(is_instance_valid(beats), "BeatConductor must exist before starting the game.")
+	assert(is_instance_valid(ui), "UI module must exist before starting the game.")
+
+	_close_flow_panels()
+	_close_runtime_ui()
+	_clear_session()
+
+	var level_data: LevelData = _ensure_level_loader().load_level_file_into_world(config.start_level_path, world)
+	if level_data == null:
+		push_error("Failed to load start level: %s" % config.start_level_path)
+		_show_main_menu()
+		return
+
+	recycled_count = 0
+	current_beat = 0
+	state = GameState.PLAYING
+
+	beats.reset(level_data.beat_bpm)
+	ui.open(UIDef.metronome_panel)
+	beats.start()
+
+
+func finish_game(success: bool) -> void:
+	if state != GameState.PLAYING:
+		return
+
+	assert(is_instance_valid(beats), "BeatConductor must exist before finishing the game.")
+	assert(is_instance_valid(ui), "UI module must exist before finishing the game.")
+
+	state = GameState.RESULT
+	beats.stop()
+	_close_runtime_ui()
+	_close_menu_panel()
+
+	var panel: ResultPanel = ui.open(UIDef.result_panel) as ResultPanel
+	assert(panel != null, "Result panel scene root is not a ResultPanel.")
+	panel.configure(success, recycled_count, TARGET_RECYCLED_COUNT, current_beat, FAILURE_BEAT_LIMIT)
+
+
+func return_to_main_menu() -> void:
+	_show_main_menu()
+
+
+func quit_game() -> void:
+	get_tree().quit()
+
+
+func register_recycled_cargo(_cargo_type: String) -> void:
+	if state != GameState.PLAYING:
+		return
+
+	if is_instance_valid(beats):
+		current_beat = beats.get_current_beat_index()
+
+	recycled_count += 1
+	if recycled_count >= TARGET_RECYCLED_COUNT:
+		finish_game(true)
 
 
 func _init_config() -> void:
@@ -116,15 +193,57 @@ func _init_ui() -> void:
 	ui = ui_instance
 
 
-func _load_start_level() -> void:
-	assert(config != null, "Config must be initialized before loading the start level.")
+func _show_main_menu() -> void:
+	assert(is_instance_valid(world), "World must exist before showing the main menu.")
+	assert(is_instance_valid(beats), "BeatConductor must exist before showing the main menu.")
+	assert(is_instance_valid(ui), "UI module must exist before showing the main menu.")
 
-	var level_data: LevelData = _ensure_level_loader().load_level_file_into_world(config.start_level_path, world)
-	if level_data == null:
+	beats.stop()
+	_close_result_panel()
+	_close_runtime_ui()
+	_clear_session()
+	state = GameState.MENU
+	ui.open(UIDef.main_menu_panel)
+
+
+func _clear_session() -> void:
+	if is_instance_valid(world):
+		world.clear_level_content()
+
+	recycled_count = 0
+	current_beat = 0
+
+
+func _close_flow_panels() -> void:
+	_close_menu_panel()
+	_close_result_panel()
+
+
+func _close_menu_panel() -> void:
+	if not is_instance_valid(ui):
 		return
 
-	assert(is_instance_valid(beats), "BeatConductor must exist before loading runtime UI.")
-	beats.reset(level_data.beat_bpm)
+	ui.close_info(UIDef.main_menu_panel)
 
-	assert(is_instance_valid(ui), "UI module must exist before opening runtime panels.")
-	ui.open(UIDef.metronome_panel)
+
+func _close_result_panel() -> void:
+	if not is_instance_valid(ui):
+		return
+
+	ui.close_info(UIDef.result_panel)
+
+
+func _close_runtime_ui() -> void:
+	if not is_instance_valid(ui):
+		return
+
+	ui.close_info(UIDef.metronome_panel)
+
+
+func _on_beat_fired(beat_index: int, _beat_time: float) -> void:
+	if state != GameState.PLAYING:
+		return
+
+	current_beat = beat_index
+	if current_beat >= FAILURE_BEAT_LIMIT:
+		finish_game(false)

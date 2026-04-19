@@ -14,6 +14,7 @@ signal beat_fired(beat_index: int, beat_time: float)
 var _beat_index: int = 0
 var _beat_timer: Timer
 var _last_beat_time_seconds: float = 0.0
+var _is_running: bool = false
 
 
 func _ready() -> void:
@@ -30,6 +31,9 @@ func get_current_beat_index() -> int:
 
 
 func get_beat_progress(now_time: float = -1.0) -> float:
+	if not _is_running:
+		return 0.0
+
 	if not is_instance_valid(_beat_timer):
 		return 0.0
 
@@ -55,7 +59,27 @@ func reset(next_bpm: float = -1.0) -> void:
 
 	_beat_timer.stop()
 	_beat_timer.wait_time = get_beat_interval_seconds()
+
+
+func start() -> void:
+	_start_beat_timer()
+	_is_running = true
+	_last_beat_time_seconds = _get_time_seconds()
+	_beat_timer.wait_time = get_beat_interval_seconds()
 	_beat_timer.start()
+
+
+func stop() -> void:
+	_is_running = false
+
+	if not is_instance_valid(_beat_timer):
+		return
+
+	_beat_timer.stop()
+
+
+func is_running() -> bool:
+	return _is_running
 
 
 func _start_beat_timer() -> void:
@@ -65,13 +89,15 @@ func _start_beat_timer() -> void:
 	_beat_timer = Timer.new()
 	_beat_timer.wait_time = get_beat_interval_seconds()
 	_beat_timer.one_shot = false
-	_beat_timer.autostart = true
 	_beat_timer.timeout.connect(_on_beat_timer_timeout)
 	add_child(_beat_timer)
 	_last_beat_time_seconds = _get_time_seconds()
 
 
 func _on_beat_timer_timeout() -> void:
+	if not _is_running:
+		return
+
 	_beat_index += 1
 	var beat_time: float = _get_time_seconds()
 	_last_beat_time_seconds = beat_time

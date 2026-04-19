@@ -441,6 +441,7 @@ func _resolve_recycler_collection() -> void:
 		if cargo == null or not is_instance_valid(cargo):
 			continue
 
+		GM.register_recycled_cargo(cargo.cargo_type)
 		cargo.remove_from_world()
 
 
