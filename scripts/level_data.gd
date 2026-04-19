@@ -4,8 +4,6 @@ extends RefCounted
 const TOP_LEVEL_KEYS := [
 	"level_id",
 	"display_name",
-	"grid_width",
-	"grid_height",
 	"beat_bpm",
 	"cells",
 ]
@@ -26,8 +24,6 @@ const CARGO_TYPE_VALUES := ["CARGO_1", "CARGO_2", "CARGO_3", "ADV_CARGO_1", "ADV
 
 var level_id: String = ""
 var display_name: String = ""
-var grid_width: int = 0
-var grid_height: int = 0
 var beat_bpm: float = 60.0
 var cells: Array[Dictionary] = []
 
@@ -76,20 +72,12 @@ static func from_dictionary(raw_data: Dictionary, source_label: String = "<memor
 	if not _has_non_empty_string(raw_data, "display_name"):
 		return _validation_error(source_label, "display_name must be a non-empty string")
 
-	if not _has_positive_integer_number(raw_data, "grid_width"):
-		return _validation_error(source_label, "grid_width must be an integer greater than 0")
-
-	if not _has_positive_integer_number(raw_data, "grid_height"):
-		return _validation_error(source_label, "grid_height must be an integer greater than 0")
-
 	if not raw_data.has("cells") or typeof(raw_data["cells"]) != TYPE_ARRAY:
 		return _validation_error(source_label, "cells must be an array")
 
 	var level_data: LevelData = LevelData.new()
 	level_data.level_id = String(raw_data["level_id"])
 	level_data.display_name = String(raw_data["display_name"])
-	level_data.grid_width = int(raw_data["grid_width"])
-	level_data.grid_height = int(raw_data["grid_height"])
 	if raw_data.has("beat_bpm"):
 		var raw_beat_bpm: Variant = raw_data["beat_bpm"]
 		if typeof(raw_beat_bpm) != TYPE_INT and typeof(raw_beat_bpm) != TYPE_FLOAT:
@@ -107,7 +95,7 @@ static func from_dictionary(raw_data: Dictionary, source_label: String = "<memor
 		if typeof(raw_cells[index]) != TYPE_DICTIONARY:
 			return _validation_error(source_label, "cells[%d] must be an object" % index)
 
-		var normalized_cell: Variant = _parse_cell(raw_cells[index], index, level_data.grid_width, level_data.grid_height, seen_cells, source_label)
+		var normalized_cell: Variant = _parse_cell(raw_cells[index], index, seen_cells, source_label)
 		if normalized_cell == null:
 			return null
 
@@ -116,7 +104,7 @@ static func from_dictionary(raw_data: Dictionary, source_label: String = "<memor
 	return level_data
 
 
-static func _parse_cell(raw_cell: Dictionary, index: int, level_width: int, level_height: int, seen_cells: Dictionary, source_label: String) -> Variant:
+static func _parse_cell(raw_cell: Dictionary, index: int, seen_cells: Dictionary, source_label: String) -> Variant:
 	var cell_label: String = "cells[%d]" % index
 	if not _ensure_allowed_keys(raw_cell, CELL_KEYS, cell_label, source_label):
 		return null
@@ -129,9 +117,6 @@ static func _parse_cell(raw_cell: Dictionary, index: int, level_width: int, leve
 
 	var x: int = int(raw_cell["x"])
 	var y: int = int(raw_cell["y"])
-	if x < 0 or x >= level_width or y < 0 or y >= level_height:
-		return _validation_error(source_label, "%s coordinates (%d, %d) are out of bounds" % [cell_label, x, y])
-
 	var cell: Vector2i = Vector2i(x, y)
 	if seen_cells.has(cell):
 		return _validation_error(source_label, "duplicate cell coordinates found at (%d, %d)" % [x, y])

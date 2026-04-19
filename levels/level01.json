@@ -1,8 +1,6 @@
 {
   "level_id": "level01",
   "display_name": "双环回廊",
-  "grid_width": 12,
-  "grid_height": 8,
   "beat_bpm": 120,
   "cells": [
     {
