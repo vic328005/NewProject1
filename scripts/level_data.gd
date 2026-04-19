@@ -9,12 +9,13 @@ const TOP_LEVEL_KEYS := [
 	"beat_bpm",
 	"cells",
 ]
-const CELL_KEYS := ["x", "y", "belt", "cargo", "producer", "recycler", "signal_tower"]
+const CELL_KEYS := ["x", "y", "belt", "cargo", "producer", "recycler", "signal_tower", "press_machine"]
 const BELT_KEYS := ["facing", "turn_mode", "beat_interval"]
 const CARGO_KEYS := ["type"]
 const PRODUCER_KEYS := ["facing", "beat_interval", "cargo_type"]
 const RECYCLER_KEYS: Array = []
 const SIGNAL_TOWER_KEYS: Array = ["max_steps"]
+const PRESS_MACHINE_KEYS := ["facing", "cargo_type", "beat_interval"]
 const BELT_FACING_VALUES := ["UP", "RIGHT", "DOWN", "LEFT"]
 const BELT_TURN_MODE_VALUES := ["STRAIGHT", "LEFT", "RIGHT"]
 const CARGO_TYPE_VALUES := ["CARGO_1", "CARGO_2", "CARGO_3"]
@@ -136,11 +137,15 @@ static func _parse_cell(raw_cell: Dictionary, index: int, level_width: int, leve
 	var has_producer: bool = raw_cell.has("producer")
 	var has_recycler: bool = raw_cell.has("recycler")
 	var has_signal_tower: bool = raw_cell.has("signal_tower")
-	if not has_belt and not has_cargo and not has_producer and not has_recycler and not has_signal_tower:
+	var has_press_machine: bool = raw_cell.has("press_machine")
+	if not has_belt and not has_cargo and not has_producer and not has_recycler and not has_signal_tower and not has_press_machine:
 		return _validation_error(source_label, "%s must contain at least one gameplay object" % cell_label)
 
-	if has_signal_tower and (has_belt or has_cargo or has_producer or has_recycler):
+	if has_signal_tower and (has_belt or has_cargo or has_producer or has_recycler or has_press_machine):
 		return _validation_error(source_label, "%s.signal_tower must occupy its own cell" % cell_label)
+
+	if has_press_machine and (has_belt or has_producer or has_recycler or has_signal_tower):
+		return _validation_error(source_label, "%s.press_machine can only share a cell with cargo" % cell_label)
 
 	var normalized_cell: Dictionary = {
 		"x": x,
@@ -196,6 +201,16 @@ static func _parse_cell(raw_cell: Dictionary, index: int, level_width: int, leve
 			return null
 
 		normalized_cell["signal_tower"] = normalized_signal_tower
+
+	if has_press_machine:
+		if typeof(raw_cell["press_machine"]) != TYPE_DICTIONARY:
+			return _validation_error(source_label, "%s.press_machine must be an object" % cell_label)
+
+		var normalized_press_machine: Variant = _parse_press_machine(raw_cell["press_machine"], cell_label, source_label)
+		if normalized_press_machine == null:
+			return null
+
+		normalized_cell["press_machine"] = normalized_press_machine
 
 	seen_cells[cell] = true
 	return normalized_cell
@@ -304,6 +319,40 @@ static func _parse_signal_tower(raw_signal_tower: Dictionary, cell_label: String
 		normalized_signal_tower["max_steps"] = int(raw_signal_tower["max_steps"])
 
 	return normalized_signal_tower
+
+
+static func _parse_press_machine(raw_press_machine: Dictionary, cell_label: String, source_label: String) -> Variant:
+	var press_machine_label: String = "%s.press_machine" % cell_label
+	if not _ensure_allowed_keys(raw_press_machine, PRESS_MACHINE_KEYS, press_machine_label, source_label):
+		return null
+
+	if not _has_non_empty_string(raw_press_machine, "facing"):
+		return _validation_error(source_label, "%s.facing must be a non-empty string" % press_machine_label)
+
+	if not _has_non_empty_string(raw_press_machine, "cargo_type"):
+		return _validation_error(source_label, "%s.cargo_type must be a non-empty string" % press_machine_label)
+
+	if not _has_positive_integer_number(raw_press_machine, "beat_interval"):
+		return _validation_error(source_label, "%s.beat_interval must be a positive integer" % press_machine_label)
+
+	var facing: String = String(raw_press_machine["facing"]).strip_edges().to_upper()
+	var cargo_type: String = String(raw_press_machine["cargo_type"]).strip_edges().to_upper()
+	var beat_interval: int = int(raw_press_machine["beat_interval"])
+
+	if not BELT_FACING_VALUES.has(facing):
+		return _validation_error(source_label, "%s.facing must be one of %s" % [press_machine_label, BELT_FACING_VALUES])
+
+	if not CARGO_TYPE_VALUES.has(cargo_type):
+		return _validation_error(source_label, "%s.cargo_type must be one of %s" % [press_machine_label, CARGO_TYPE_VALUES])
+
+	if beat_interval != 1 and beat_interval != 2:
+		return _validation_error(source_label, "%s.beat_interval must be 1 or 2" % press_machine_label)
+
+	return {
+		"facing": facing,
+		"cargo_type": cargo_type,
+		"beat_interval": beat_interval,
+	}
 
 
 static func _ensure_allowed_keys(raw_data: Dictionary, allowed_keys: Array, label: String, source_label: String) -> bool:

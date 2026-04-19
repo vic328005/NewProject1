@@ -16,6 +16,7 @@ var _world: World
 var _registered_cell: Vector2i
 var _is_registered_to_layer := false
 var _move_tween: Tween
+var last_resolved_beat: int = -1
 @onready var _sprite: Sprite2D = $Sprite2D
 
 
@@ -57,6 +58,14 @@ func _unregister_from_cargo_layer() -> void:
 
 func get_registered_cell() -> Vector2i:
 	return _registered_cell
+
+
+func was_resolved_on_beat(beat_index: int) -> bool:
+	return last_resolved_beat == beat_index
+
+
+func mark_resolved_on_beat(beat_index: int) -> void:
+	last_resolved_beat = beat_index
 
 
 func place_at_cell(world: World, cell: Vector2i) -> void:

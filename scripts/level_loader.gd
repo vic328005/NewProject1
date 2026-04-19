@@ -6,6 +6,7 @@ const CARGO_SCENE := preload("res://prefabs/cargo.tscn")
 const PRODUCER_SCENE := preload("res://prefabs/producer.tscn")
 const RECYCLER_SCENE := preload("res://prefabs/recycler.tscn")
 const SIGNAL_TOWER_SCENE: PackedScene = preload("res://prefabs/signal_tower.tscn")
+const PRESS_MACHINE_SCENE: PackedScene = preload("res://prefabs/press_machine.tscn")
 
 
 func load_level_file_into_world(level_path: String, world: World) -> LevelData:
@@ -54,6 +55,11 @@ func apply_level_data_to_world(level_data: LevelData, world: World) -> bool:
 			var signal_tower: SignalTower = _create_signal_tower(cell, signal_tower_data, world)
 			world.add_level_content(signal_tower)
 
+		if cell_data.has("press_machine"):
+			var press_machine_data: Dictionary = Dictionary(cell_data["press_machine"])
+			var press_machine: PressMachine = _create_press_machine(cell, press_machine_data, world)
+			world.add_level_content(press_machine)
+
 		if cell_data.has("cargo"):
 			var cargo_data: Dictionary = Dictionary(cell_data["cargo"])
 			var cargo: Cargo = _create_cargo(cell, cargo_data, world)
@@ -101,6 +107,15 @@ func _create_signal_tower(cell: Vector2i, signal_tower_data: Dictionary, world: 
 	return signal_tower
 
 
+func _create_press_machine(cell: Vector2i, press_machine_data: Dictionary, world: World) -> PressMachine:
+	var press_machine: PressMachine = PRESS_MACHINE_SCENE.instantiate() as PressMachine
+	press_machine.position = world.cell_to_world(cell)
+	press_machine.facing = _to_press_machine_direction(String(press_machine_data["facing"]))
+	press_machine.cargo_type = String(press_machine_data["cargo_type"])
+	press_machine.beat_interval = int(press_machine_data["beat_interval"])
+	return press_machine
+
+
 func _to_belt_direction(direction_name: String) -> Belt.Direction:
 	match direction_name:
 		"UP":
@@ -133,3 +148,15 @@ func _to_belt_turn_mode(turn_mode_name: String) -> Belt.TurnMode:
 			return Belt.TurnMode.RIGHT
 		_:
 			return Belt.TurnMode.STRAIGHT
+
+
+func _to_press_machine_direction(direction_name: String) -> PressMachine.Direction:
+	match direction_name:
+		"UP":
+			return PressMachine.Direction.UP
+		"RIGHT":
+			return PressMachine.Direction.RIGHT
+		"DOWN":
+			return PressMachine.Direction.DOWN
+		_:
+			return PressMachine.Direction.LEFT

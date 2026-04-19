@@ -1,6 +1,6 @@
 {
   "level_id": "level03",
-  "display_name": "信号塔走廊测试",
+  "display_name": "信号塔走廊压塑测试",
   "grid_width": 18,
   "grid_height": 11,
   "beat_bpm": 120,
@@ -53,9 +53,12 @@
     {
       "x": 13,
       "y": 7,
-      "belt": {
+      "cargo": {
+        "type": "CARGO_1"
+      },
+      "press_machine": {
         "facing": "RIGHT",
-        "turn_mode": "STRAIGHT",
+        "cargo_type": "CARGO_3",
         "beat_interval": 2
       }
     },

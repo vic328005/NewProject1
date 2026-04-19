@@ -51,6 +51,10 @@ func is_finished() -> bool:
 	return _is_finished
 
 
+func get_wave_cells() -> Array[Vector2i]:
+	return _wave_cells.duplicate()
+
+
 func remove_from_world() -> void:
 	queue_free()
 

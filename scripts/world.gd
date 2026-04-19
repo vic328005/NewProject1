@@ -10,6 +10,7 @@ var belt_layer: MapLayer
 var producer_layer: MapLayer
 var recycler_layer: MapLayer
 var signal_tower_layer: MapLayer
+var press_machine_layer: MapLayer
 var environment: Node2D
 var level_id: String = ""
 var display_name: String = ""
@@ -30,6 +31,7 @@ func _init(config: Config) -> void:
 	producer_layer = _create_layer()
 	recycler_layer = _create_layer()
 	signal_tower_layer = _create_layer()
+	press_machine_layer = _create_layer()
 	_init_environment()
 
 
@@ -90,6 +92,7 @@ func clear_level_content() -> void:
 	producer_layer.clear()
 	recycler_layer.clear()
 	signal_tower_layer.clear()
+	press_machine_layer.clear()
 	_active_signals.clear()
 	_last_signal_emit_beat_index = -1
 	level_id = ""
@@ -124,10 +127,13 @@ func _create_layer() -> MapLayer:
 
 
 func _on_beat_fired(beat_index: int, _beat_time: float) -> void:
+	var triggered_press_machines: Dictionary = _collect_triggered_press_machines()
 	_resolve_producer_spawns(beat_index)
-	_resolve_belt_moves(beat_index)
+	_resolve_transport(beat_index, triggered_press_machines)
+	_resolve_press_machines(beat_index, triggered_press_machines)
 	_resolve_recycler_collection()
 	_resolve_signals(beat_index)
+
 
 func is_cell_in_bounds(cell: Vector2i) -> bool:
 	return cell.x >= 0 and cell.x < grid_width and cell.y >= 0 and cell.y < grid_height
@@ -168,15 +174,21 @@ func _resolve_producer_spawns(beat_index: int) -> void:
 		spawn_cargo(target_cell, producer.cargo_type)
 
 
-func _resolve_belt_moves(beat_index: int) -> void:
+func _resolve_transport(beat_index: int, triggered_press_machines: Dictionary) -> void:
+	var direct_requests: Array[Dictionary] = []
+	var incoming_press_requests: Array[Dictionary] = []
+	var occupied_cells: Dictionary = cargo_layer.get_cells().duplicate()
+	_collect_belt_requests(beat_index, occupied_cells, direct_requests, incoming_press_requests)
+	_collect_idle_press_machine_requests(beat_index, triggered_press_machines, direct_requests)
+	_resolve_simple_move_requests(direct_requests, beat_index, occupied_cells)
+	_resolve_incoming_press_requests(incoming_press_requests, beat_index, triggered_press_machines)
+
+
+func _collect_belt_requests(beat_index: int, occupied_cells: Dictionary, direct_requests: Array[Dictionary], incoming_press_requests: Array[Dictionary]) -> void:
 	var belt_cells: Dictionary = belt_layer.get_cells()
-	var occupied_cells: Dictionary = cargo_layer.get_cells()
-	var requests: Array[Dictionary] = []
-	var target_counts: Dictionary = {}
 
 	for cell in belt_cells.keys():
 		var belt: Belt = belt_cells[cell] as Belt
-
 		if belt == null or not is_instance_valid(belt):
 			continue
 
@@ -187,27 +199,234 @@ func _resolve_belt_moves(beat_index: int) -> void:
 		if cargo == null or not is_instance_valid(cargo):
 			continue
 
-		var target_cell: Vector2i = belt.get_target_cell()
-		requests.append({
+		if cargo.was_resolved_on_beat(beat_index):
+			continue
+
+		var request: Dictionary = {
 			"cargo": cargo,
-			"target_cell": target_cell,
+			"target_cell": belt.get_target_cell(),
+		}
+		var target_cell: Vector2i = request["target_cell"]
+		if press_machine_layer.has_cell(target_cell):
+			incoming_press_requests.append(request)
+			continue
+
+		direct_requests.append(request)
+
+
+func _collect_idle_press_machine_requests(beat_index: int, triggered_press_machines: Dictionary, direct_requests: Array[Dictionary]) -> void:
+	var press_machine_cells: Dictionary = press_machine_layer.get_cells()
+
+	for cell in press_machine_cells.keys():
+		var press_machine: PressMachine = press_machine_cells[cell] as PressMachine
+		if press_machine == null or not is_instance_valid(press_machine):
+			continue
+
+		if press_machine.is_pressing():
+			continue
+
+		if not press_machine.should_trigger_on_beat(beat_index):
+			continue
+
+		if _is_press_machine_triggered(press_machine, triggered_press_machines):
+			continue
+
+		var cargo: Cargo = cargo_layer.get_cell(cell) as Cargo
+		if cargo == null or not is_instance_valid(cargo):
+			continue
+
+		if cargo.was_resolved_on_beat(beat_index):
+			continue
+
+		direct_requests.append({
+			"cargo": cargo,
+			"target_cell": press_machine.get_target_cell(),
 		})
+
+
+func _resolve_simple_move_requests(requests: Array[Dictionary], beat_index: int, occupied_cells: Dictionary) -> void:
+	var target_counts: Dictionary = {}
+	for request in requests:
+		var target_cell: Vector2i = request["target_cell"]
 		target_counts[target_cell] = int(target_counts.get(target_cell, 0)) + 1
 
 	for request in requests:
-		var target_cell: Vector2i = request["target_cell"]
+		var cargo: Cargo = request["cargo"] as Cargo
+		if cargo == null or not is_instance_valid(cargo):
+			continue
 
+		cargo.mark_resolved_on_beat(beat_index)
+
+		var target_cell: Vector2i = request["target_cell"]
 		if int(target_counts.get(target_cell, 0)) != 1:
 			continue
 
 		if occupied_cells.has(target_cell):
 			continue
 
-		var cargo: Cargo = request["cargo"]
+		cargo.move_to_cell(target_cell)
+
+
+func _resolve_incoming_press_requests(incoming_press_requests: Array[Dictionary], beat_index: int, triggered_press_machines: Dictionary) -> void:
+	var requests_by_cell: Dictionary = {}
+	for request in incoming_press_requests:
+		var target_cell: Vector2i = request["target_cell"]
+		if not requests_by_cell.has(target_cell):
+			requests_by_cell[target_cell] = []
+
+		var requests_at_cell: Array = requests_by_cell[target_cell]
+		requests_at_cell.append(request)
+		requests_by_cell[target_cell] = requests_at_cell
+
+	for cell in requests_by_cell.keys():
+		var press_machine: PressMachine = press_machine_layer.get_cell(cell) as PressMachine
+		if press_machine == null or not is_instance_valid(press_machine):
+			continue
+
+		var requests_at_cell: Array = requests_by_cell[cell]
+		if press_machine.is_pressing():
+			for request in requests_at_cell:
+				var busy_cargo: Cargo = request["cargo"] as Cargo
+				if busy_cargo == null or not is_instance_valid(busy_cargo):
+					continue
+
+				busy_cargo.mark_resolved_on_beat(beat_index)
+				busy_cargo.remove_from_world()
+
+			continue
+
+		if requests_at_cell.size() != 1:
+			for request in requests_at_cell:
+				var blocked_cargo: Cargo = request["cargo"] as Cargo
+				if blocked_cargo == null or not is_instance_valid(blocked_cargo):
+					continue
+
+				blocked_cargo.mark_resolved_on_beat(beat_index)
+
+			continue
+
+		if cargo_layer.has_cell(cell):
+			var occupied_cargo: Cargo = requests_at_cell[0]["cargo"] as Cargo
+			if occupied_cargo != null and is_instance_valid(occupied_cargo):
+				occupied_cargo.mark_resolved_on_beat(beat_index)
+
+			continue
+
+		var request: Dictionary = requests_at_cell[0]
+		var cargo: Cargo = request["cargo"] as Cargo
 		if cargo == null or not is_instance_valid(cargo):
 			continue
 
-		cargo.move_to_cell(target_cell)
+		cargo.mark_resolved_on_beat(beat_index)
+
+		if _is_press_machine_triggered(press_machine, triggered_press_machines):
+			cargo.move_to_cell(cell)
+			continue
+
+		cargo.move_to_cell(cell)
+
+
+func _resolve_press_machines(beat_index: int, triggered_press_machines: Dictionary) -> void:
+	_resolve_finished_press_outputs(beat_index)
+	_start_triggered_presses(beat_index, triggered_press_machines)
+
+
+func _resolve_finished_press_outputs(beat_index: int) -> void:
+	var press_machine_cells: Dictionary = press_machine_layer.get_cells()
+	var output_requests: Array[Dictionary] = []
+	var target_counts: Dictionary = {}
+
+	for cell in press_machine_cells.keys():
+		var press_machine: PressMachine = press_machine_cells[cell] as PressMachine
+		if press_machine == null or not is_instance_valid(press_machine):
+			continue
+
+		if not press_machine.has_finished_press(beat_index):
+			continue
+
+		if not press_machine.should_trigger_on_beat(beat_index):
+			continue
+
+		var cargo: Cargo = press_machine.get_pressed_cargo()
+		if cargo == null or not is_instance_valid(cargo):
+			press_machine.clear_pressed_cargo()
+			continue
+
+		cargo.cargo_type = press_machine.cargo_type
+		var target_cell: Vector2i = press_machine.get_target_cell()
+		output_requests.append({
+			"cargo": cargo,
+			"target_cell": target_cell,
+			"press_machine": press_machine,
+		})
+		target_counts[target_cell] = int(target_counts.get(target_cell, 0)) + 1
+
+	for request in output_requests:
+		var press_machine: PressMachine = request["press_machine"] as PressMachine
+		var cargo: Cargo = request["cargo"] as Cargo
+		if press_machine == null or not is_instance_valid(press_machine):
+			continue
+
+		if cargo == null or not is_instance_valid(cargo):
+			press_machine.clear_pressed_cargo()
+			continue
+
+		cargo.mark_resolved_on_beat(beat_index)
+
+		var target_cell: Vector2i = request["target_cell"]
+		if int(target_counts.get(target_cell, 0)) != 1:
+			continue
+
+		if cargo_layer.has_cell(target_cell):
+			continue
+
+		if not cargo.move_to_cell(target_cell):
+			continue
+
+		press_machine.clear_pressed_cargo()
+
+
+func _start_triggered_presses(beat_index: int, triggered_press_machines: Dictionary) -> void:
+	for cell in triggered_press_machines.keys():
+		var press_machine: PressMachine = triggered_press_machines[cell] as PressMachine
+		if press_machine == null or not is_instance_valid(press_machine):
+			continue
+
+		if press_machine.is_pressing():
+			continue
+
+		var cargo: Cargo = cargo_layer.get_cell(cell) as Cargo
+		if cargo == null or not is_instance_valid(cargo):
+			continue
+
+		press_machine.begin_press(cargo, beat_index)
+		cargo.mark_resolved_on_beat(beat_index)
+
+
+func _collect_triggered_press_machines() -> Dictionary:
+	var triggered_press_machines: Dictionary = {}
+
+	for signal_wave_node in _active_signals:
+		var signal_wave: SignalWave = signal_wave_node as SignalWave
+		if signal_wave == null or not is_instance_valid(signal_wave):
+			continue
+
+		var wave_cells: Array[Vector2i] = signal_wave.get_wave_cells()
+		for cell in wave_cells:
+			var press_machine: PressMachine = press_machine_layer.get_cell(cell) as PressMachine
+			if press_machine == null or not is_instance_valid(press_machine):
+				continue
+
+			triggered_press_machines[cell] = press_machine
+
+	return triggered_press_machines
+
+
+func _is_press_machine_triggered(press_machine: PressMachine, triggered_press_machines: Dictionary) -> bool:
+	if press_machine == null or not is_instance_valid(press_machine):
+		return false
+
+	return triggered_press_machines.has(press_machine.get_registered_cell())
 
 
 func _resolve_recycler_collection() -> void:
