@@ -11,7 +11,7 @@ enum Direction {
 
 const PREVIEW_CELL_SIZE: float = 64.0
 const PREVIEW_CENTER: Vector2 = Vector2(PREVIEW_CELL_SIZE * 0.5, PREVIEW_CELL_SIZE * 0.5)
-const DEFAULT_CARGO_TYPE: String = "CARGO_1"
+const DEFAULT_CARGO_TYPE: String = CargoType.DEFAULT
 const DEFAULT_BEAT_INTERVAL: int = 2
 const BASE_COLOR: Color = Color(0.94, 0.82, 0.30, 1.0)
 const SHAPE_COLOR_1: Color = Color(0.96, 0.89, 0.72, 1.0)
@@ -26,7 +26,7 @@ const SHAPE_COLOR_3: Color = Color(0.62, 0.56, 0.98, 1.0)
 
 @export var cargo_type: String = DEFAULT_CARGO_TYPE:
 	set(value):
-		cargo_type = _normalize_cargo_type(value)
+		cargo_type = CargoType.normalize(value)
 		_update_sprite_visual()
 		queue_redraw()
 
@@ -157,10 +157,10 @@ func _draw() -> void:
 	_draw_arrow_head(arrow_tip, _direction_to_vector(facing))
 
 	match cargo_type:
-		"CARGO_2":
+		CargoType.B:
 			draw_circle(PREVIEW_CENTER, 12.0, shape_color)
 			draw_arc(PREVIEW_CENTER, 12.0, 0.0, TAU, 24, Color.BLACK, 2.0)
-		"CARGO_3":
+		CargoType.C:
 			draw_rect(Rect2(PREVIEW_CENTER - Vector2.ONE * 11.0, Vector2.ONE * 22.0), shape_color, true)
 			draw_rect(Rect2(PREVIEW_CENTER - Vector2.ONE * 11.0, Vector2.ONE * 22.0), Color.BLACK, false, 2.0)
 		_:
@@ -207,14 +207,9 @@ func _direction_to_vector(direction: Direction) -> Vector2:
 
 func _get_shape_color() -> Color:
 	match cargo_type:
-		"CARGO_2":
+		CargoType.B:
 			return SHAPE_COLOR_2
-		"CARGO_3":
+		CargoType.C:
 			return SHAPE_COLOR_3
 		_:
 			return SHAPE_COLOR_1
-
-
-static func _normalize_cargo_type(value: Variant) -> String:
-	var normalized_value: String = String(value).strip_edges().to_upper()
-	return normalized_value if not normalized_value.is_empty() else DEFAULT_CARGO_TYPE

@@ -1,29 +1,75 @@
 {
   "level_id": "level03",
-  "display_name": "信号塔走廊压塑测试",
+  "display_name": "生产打包产线",
   "beat_bpm": 120,
   "cells": [
     {
-      "x": 9,
-      "y": 6,
+      "x": 5,
+      "y": 8,
       "producer": {
-        "facing": "DOWN",
+        "facing": "RIGHT",
         "beat_interval": 2,
-        "cargo_type": "CARGO_1"
+        "production_sequence": [
+          "A",
+          "B",
+          "C",
+          "A",
+          "B",
+          "C",
+          "A",
+          "B",
+          "C",
+          "A",
+          "B",
+          "C",
+          "A",
+          "B",
+          "C",
+          "A",
+          "B",
+          "C",
+          "A",
+          "B"
+        ]
       }
     },
     {
-      "x": 9,
-      "y": 7,
+      "x": 6,
+      "y": 8,
       "belt": {
-        "facing": "DOWN",
-        "turn_mode": "LEFT",
+        "facing": "RIGHT",
+        "turn_mode": "STRAIGHT",
         "beat_interval": 2
       }
     },
     {
+      "x": 7,
+      "y": 8,
+      "belt": {
+        "facing": "RIGHT",
+        "turn_mode": "STRAIGHT",
+        "beat_interval": 2
+      }
+    },
+    {
+      "x": 8,
+      "y": 8,
+      "belt": {
+        "facing": "RIGHT",
+        "turn_mode": "STRAIGHT",
+        "beat_interval": 2
+      }
+    },
+    {
+      "x": 9,
+      "y": 8,
+      "packer": {
+        "facing": "RIGHT"
+      }
+    },
+    {
       "x": 10,
-      "y": 7,
+      "y": 8,
       "belt": {
         "facing": "RIGHT",
         "turn_mode": "STRAIGHT",
@@ -32,7 +78,7 @@
     },
     {
       "x": 11,
-      "y": 7,
+      "y": 8,
       "belt": {
         "facing": "RIGHT",
         "turn_mode": "STRAIGHT",
@@ -41,65 +87,29 @@
     },
     {
       "x": 12,
-      "y": 7,
-      "belt": {
-        "facing": "RIGHT",
-        "turn_mode": "STRAIGHT",
-        "beat_interval": 2
-      }
-    },
-    {
-      "x": 13,
-      "y": 7,
-      "cargo": {
-        "type": "CARGO_1"
-      },
-      "press_machine": {
-        "facing": "RIGHT",
-        "cargo_type": "CARGO_3",
-        "beat_interval": 2
-      }
-    },
-    {
-      "x": 14,
-      "y": 7,
-      "belt": {
-        "facing": "RIGHT",
-        "turn_mode": "STRAIGHT",
-        "beat_interval": 2
-      }
-    },
-    {
-      "x": 15,
-      "y": 7,
-      "belt": {
-        "facing": "RIGHT",
-        "turn_mode": "STRAIGHT",
-        "beat_interval": 2
-      }
-    },
-    {
-      "x": 16,
-      "y": 7,
-      "belt": {
-        "facing": "RIGHT",
-        "turn_mode": "STRAIGHT",
-        "beat_interval": 2
-      }
-    },
-    {
-      "x": 17,
-      "y": 7,
+      "y": 8,
       "recycler": {
-        "cargo_type": "CARGO_3",
-        "required_count": 3
+        "targets": [
+          {
+            "product_type": "A",
+            "required_count": 7
+          },
+          {
+            "product_type": "B",
+            "required_count": 7
+          },
+          {
+            "product_type": "C",
+            "required_count": 6
+          }
+        ]
       }
     },
     {
-      "x": 13,
-      "y": 9,
+      "x": 9,
+      "y": 11,
       "signal_tower": {
-        "max_steps": 10
+        "max_steps": 3
       }
     }
   ]

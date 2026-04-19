@@ -8,8 +8,6 @@ enum Direction {
 	LEFT,
 }
 
-const DEFAULT_CARGO_TYPE: String = "CARGO_1"
-
 @export var facing: Direction = Direction.RIGHT:
 	set(value):
 		facing = value
@@ -18,13 +16,15 @@ const DEFAULT_CARGO_TYPE: String = "CARGO_1"
 	set(value):
 		beat_interval = maxi(value, 1)
 
-@export var cargo_type: String = DEFAULT_CARGO_TYPE:
+@export var production_sequence: Array[String] = []:
 	set(value):
-		cargo_type = _normalize_cargo_type(value)
+		production_sequence = _normalize_production_sequence(value)
+		_next_production_index = 0
 
 var _world: World
 var _registered_cell: Vector2i
 var _is_registered_to_layer: bool = false
+var _next_production_index: int = 0
 
 
 func _ready() -> void:
@@ -46,6 +46,20 @@ func get_registered_cell() -> Vector2i:
 
 func get_target_cell() -> Vector2i:
 	return _registered_cell + _direction_to_offset(facing)
+
+
+func has_remaining_production() -> bool:
+	return _next_production_index < production_sequence.size()
+
+
+func get_next_cargo_type() -> String:
+	assert(has_remaining_production(), "Producer has no remaining cargo to produce.")
+	return production_sequence[_next_production_index]
+
+
+func mark_produced() -> void:
+	assert(has_remaining_production(), "Producer cannot advance production past the configured sequence.")
+	_next_production_index += 1
 
 
 func _register_to_producer_layer() -> void:
@@ -80,6 +94,9 @@ func _direction_to_offset(direction: Direction) -> Vector2i:
 			return Vector2i.LEFT
 
 
-static func _normalize_cargo_type(value: Variant) -> String:
-	var normalized_value: String = String(value).strip_edges().to_upper()
-	return normalized_value if not normalized_value.is_empty() else DEFAULT_CARGO_TYPE
+func _normalize_production_sequence(value: Array) -> Array[String]:
+	var normalized_sequence: Array[String] = []
+	for cargo_type in value:
+		normalized_sequence.append(CargoType.normalize(cargo_type))
+
+	return normalized_sequence

@@ -109,15 +109,14 @@ func _create_producer(cell: Vector2i, producer_data: Dictionary, world: World) -
 	producer.position = world.cell_to_world(cell)
 	producer.facing = _to_producer_direction(String(producer_data["facing"]))
 	producer.beat_interval = int(producer_data["beat_interval"])
-	producer.cargo_type = String(producer_data["cargo_type"])
+	producer.production_sequence = Array(producer_data["production_sequence"]).duplicate(true)
 	return producer
 
 
 func _create_recycler(cell: Vector2i, recycler_data: Dictionary, world: World) -> Recycler:
 	var recycler: Recycler = RECYCLER_SCENE.instantiate() as Recycler
 	recycler.position = world.cell_to_world(cell)
-	recycler.cargo_type = String(recycler_data["cargo_type"])
-	recycler.required_count = int(recycler_data["required_count"])
+	recycler.targets = Array(recycler_data["targets"]).duplicate(true)
 	return recycler
 
 

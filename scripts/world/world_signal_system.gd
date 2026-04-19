@@ -7,6 +7,7 @@ const TRIGGERED_PACKERS_KEY: StringName = &"packers"
 
 var _world: World
 var _active_signals: Array[SignalWave] = []
+var _pending_signals: Array[SignalWave] = []
 var _last_signal_emit_beat_index: int = -1
 
 
@@ -18,11 +19,14 @@ func _init(world: World) -> void:
 # 清空本关的信号运行态，配合 World 复用整体结构。
 func clear() -> void:
 	_active_signals.clear()
+	_pending_signals.clear()
 	_last_signal_emit_beat_index = -1
 
 
-# 汇总当前所有信号波命中的设备，供本拍结算统一读取。
-func collect_triggered_devices() -> Dictionary:
+# 在拍点开始时推进旧信号、合入新信号，并产出本拍唯一信号快照。
+func begin_beat(beat_index: int) -> Dictionary:
+	_advance_active_signals(beat_index)
+	_merge_pending_signals()
 	return {
 		TRIGGERED_SORTERS_KEY: _collect_triggered_sorters(),
 		TRIGGERED_PRESS_MACHINES_KEY: _collect_triggered_press_machines(),
@@ -30,8 +34,8 @@ func collect_triggered_devices() -> Dictionary:
 	}
 
 
-# 推进当前拍的信号波前进并清理完成的波。
-func advance_signals(beat_index: int) -> void:
+# 推进当前拍开始前已经生效的信号波，并清理已结束的波。
+func _advance_active_signals(beat_index: int) -> void:
 	for index in range(_active_signals.size() - 1, -1, -1):
 		var signal_wave: SignalWave = _active_signals[index]
 		if signal_wave == null or not is_instance_valid(signal_wave):
@@ -44,6 +48,17 @@ func advance_signals(beat_index: int) -> void:
 
 		_active_signals.remove_at(index)
 		signal_wave.remove_from_world()
+
+
+# 将上一个拍间内新发射的信号波合并进当前拍的生效集合。
+func _merge_pending_signals() -> void:
+	for signal_wave in _pending_signals:
+		if signal_wave == null or not is_instance_valid(signal_wave):
+			continue
+
+		_active_signals.append(signal_wave)
+
+	_pending_signals.clear()
 
 
 # 按当前拍向全场信号塔尝试发射信号，单拍只允许一次发射。
@@ -65,7 +80,7 @@ func try_emit_for_current_beat() -> bool:
 			continue
 
 		var signal_wave: SignalWave = signal_tower.create_signal_wave(current_beat_index)
-		_active_signals.append(signal_wave)
+		_pending_signals.append(signal_wave)
 		_world.add_level_content(signal_wave)
 		emitted = true
 
@@ -115,7 +130,7 @@ func _collect_triggered_press_machines() -> Dictionary:
 	return triggered_press_machines
 
 
-# 收集当前生效信号波命中的打包机及当拍初始货物快照。
+# 收集当前生效信号波命中的打包机。
 func _collect_triggered_packers() -> Dictionary:
 	var triggered_packers: Dictionary = {}
 
@@ -129,10 +144,6 @@ func _collect_triggered_packers() -> Dictionary:
 			if packer == null or not is_instance_valid(packer):
 				continue
 
-			# 这里记录信号命中当下的货物快照，避免同拍后续运输把新货送进来后被误打包。
-			triggered_packers[cell] = {
-				"packer": packer,
-				"cargo": _world.cargo_layer.get_cell(cell) as Cargo,
-			}
+			triggered_packers[cell] = packer
 
 	return triggered_packers

@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://bqakem14t0x81"]
 
 [ext_resource type="Script" uid="uid://c6ctyxa1prx6m" path="res://scripts/cargo.gd" id="1_kdbxi"]
-[ext_resource type="Texture2D" uid="uid://c0kstpyevbwyw" path="res://assets/images/cargo_3.png" id="2_kdbxi"]
+[ext_resource type="Texture2D" path="res://assets/images/cargo_1.png" id="2_kdbxi"]
 
 [node name="Cargo" type="Node2D" unique_id=918002718]
 script = ExtResource("1_kdbxi")

@@ -5,6 +5,13 @@ const TRIGGERED_SORTERS_KEY: StringName = &"sorters"
 const TRIGGERED_PRESS_MACHINES_KEY: StringName = &"press_machines"
 const TRIGGERED_PACKERS_KEY: StringName = &"packers"
 
+const ITEM_COMMAND_WAIT: StringName = &"WAIT"
+const ITEM_COMMAND_MOVE_TO_CELL: StringName = &"MOVE_TO_CELL"
+const ITEM_COMMAND_PACK_IN_PLACE: StringName = &"PACK_IN_PLACE"
+const ITEM_COMMAND_PRESS_IN_PLACE: StringName = &"PRESS_IN_PLACE"
+const ITEM_COMMAND_RECYCLE_PRODUCT: StringName = &"RECYCLE_PRODUCT"
+const ITEM_COMMAND_RECYCLE_CARGO: StringName = &"RECYCLE_CARGO"
+
 var _world: World
 
 
@@ -13,22 +20,61 @@ func _init(world: World) -> void:
 	_world = world
 
 
-# 拍点触发时执行完整结算流程：产出、运输、打包、压制、回收。
-func resolve_beat(beat_index: int, triggered_devices: Dictionary) -> void:
-	# 单拍内按固定顺序结算，避免运输、加工、回收之间互相抢状态。
-	var triggered_sorters: Dictionary = triggered_devices.get(TRIGGERED_SORTERS_KEY, {})
-	var triggered_press_machines: Dictionary = triggered_devices.get(TRIGGERED_PRESS_MACHINES_KEY, {})
-	var triggered_packers: Dictionary = triggered_devices.get(TRIGGERED_PACKERS_KEY, {})
-	_resolve_producer_spawns(beat_index)
-	_toggle_triggered_sorters(triggered_sorters)
-	_resolve_transport(beat_index, triggered_press_machines)
-	_resolve_packers(beat_index, triggered_packers)
-	_resolve_press_machines(beat_index, triggered_press_machines)
-	_resolve_recycler_collection()
+# 拍点结算按“信号快照 -> 机器给脚下物体下命令 -> 提交阶段统一执行”运行。
+func resolve_beat(beat_index: int, signal_snapshot: Dictionary) -> void:
+	var beat_snapshot: Dictionary = _create_beat_snapshot(beat_index, signal_snapshot)
+	var machine_plan: Dictionary = _create_machine_plan(beat_snapshot)
+	var item_commands: Dictionary = _create_item_commands(beat_snapshot, machine_plan)
+	var move_success_by_id: Dictionary = _resolve_move_successes(beat_snapshot["items"], item_commands)
+	var did_recycler_progress: bool = _apply_item_commands(beat_index, item_commands, move_success_by_id)
+	_apply_sorter_toggles(machine_plan)
+	_apply_producer_spawns(beat_index, machine_plan)
+
+	if did_recycler_progress and _world.are_all_recyclers_completed():
+		GM.finish_game(true)
 
 
-# 按拍点让生产机尝试生成货物。
-func _resolve_producer_spawns(beat_index: int) -> void:
+func _create_beat_snapshot(beat_index: int, signal_snapshot: Dictionary) -> Dictionary:
+	return {
+		"beat_index": beat_index,
+		"items": _world.item_layer.get_cells().duplicate(),
+		"triggered_sorters": signal_snapshot.get(TRIGGERED_SORTERS_KEY, {}),
+		"triggered_press_machines": signal_snapshot.get(TRIGGERED_PRESS_MACHINES_KEY, {}),
+		"triggered_packers": signal_snapshot.get(TRIGGERED_PACKERS_KEY, {}),
+	}
+
+
+func _create_machine_plan(beat_snapshot: Dictionary) -> Dictionary:
+	var machine_plan: Dictionary = {
+		"sorter_toggle_cells": {},
+		"sorter_target_cells": {},
+		"producer_spawns": [],
+	}
+
+	_plan_sorters(beat_snapshot, machine_plan)
+	_plan_producers(beat_snapshot, machine_plan)
+	return machine_plan
+
+
+func _plan_sorters(beat_snapshot: Dictionary, machine_plan: Dictionary) -> void:
+	var triggered_sorters: Dictionary = beat_snapshot["triggered_sorters"]
+	var sorter_cells: Dictionary = _world.sorter_layer.get_cells()
+
+	for cell in sorter_cells.keys():
+		var sorter: Sorter = sorter_cells[cell] as Sorter
+		if sorter == null or not is_instance_valid(sorter):
+			continue
+
+		var should_toggle: bool = triggered_sorters.has(cell)
+		if should_toggle:
+			machine_plan["sorter_toggle_cells"][cell] = sorter
+
+		machine_plan["sorter_target_cells"][cell] = _get_sorter_target_cell(sorter, should_toggle)
+
+
+func _plan_producers(beat_snapshot: Dictionary, machine_plan: Dictionary) -> void:
+	var items: Dictionary = beat_snapshot["items"]
+	var beat_index: int = int(beat_snapshot["beat_index"])
 	var producer_cells: Dictionary = _world.producer_layer.get_cells()
 
 	for cell in producer_cells.keys():
@@ -39,364 +85,427 @@ func _resolve_producer_spawns(beat_index: int) -> void:
 		if not producer.should_trigger_on_beat(beat_index):
 			continue
 
+		if not producer.has_remaining_production():
+			continue
+
 		var target_cell: Vector2i = producer.get_target_cell()
-		if _world.cargo_layer.has_cell(target_cell):
+		if items.has(target_cell):
 			continue
 
-		_world.spawn_cargo(target_cell, producer.cargo_type)
-
-
-# 汇总并执行本拍运输请求，先判定再统一处理冲突。
-func _resolve_transport(beat_index: int, triggered_press_machines: Dictionary) -> void:
-	# 先收集本拍所有运输请求，再统一裁决冲突，避免先后遍历顺序影响结果。
-	var direct_requests: Array[Dictionary] = []
-	var incoming_press_requests: Array[Dictionary] = []
-	var occupied_cells: Dictionary = _world.cargo_layer.get_cells().duplicate()
-	_collect_belt_requests(beat_index, occupied_cells, direct_requests, incoming_press_requests)
-	_collect_sorter_requests(beat_index, occupied_cells, direct_requests, incoming_press_requests)
-	_collect_idle_press_machine_requests(beat_index, triggered_press_machines, direct_requests)
-	_resolve_simple_move_requests(direct_requests, beat_index, occupied_cells)
-	_resolve_incoming_press_requests(incoming_press_requests, beat_index, triggered_press_machines)
-
-
-# 收集传送带在当前拍内产生的移动请求，区分是否打到压机入口。
-func _collect_belt_requests(beat_index: int, occupied_cells: Dictionary, direct_requests: Array[Dictionary], incoming_press_requests: Array[Dictionary]) -> void:
-	var belt_cells: Dictionary = _world.belt_layer.get_cells()
-
-	for cell in belt_cells.keys():
-		var belt: Belt = belt_cells[cell] as Belt
-		if belt == null or not is_instance_valid(belt):
-			continue
-
-		if not belt.should_trigger_on_beat(beat_index):
-			continue
-
-		var cargo: Cargo = occupied_cells.get(cell) as Cargo
-		if cargo == null or not is_instance_valid(cargo):
-			continue
-
-		if cargo.was_resolved_on_beat(beat_index):
-			continue
-
-		var request: Dictionary = {
-			"cargo": cargo,
-			"target_cell": belt.get_target_cell(),
-		}
-		var target_cell: Vector2i = request["target_cell"]
-		if _world.press_machine_layer.has_cell(target_cell):
-			incoming_press_requests.append(request)
-			continue
-
-		direct_requests.append(request)
-
-
-# 收集分拣机在当前拍内的输出请求，按目标分流直接移动或压机入口等待。
-func _collect_sorter_requests(beat_index: int, occupied_cells: Dictionary, direct_requests: Array[Dictionary], incoming_press_requests: Array[Dictionary]) -> void:
-	var sorter_cells: Dictionary = _world.sorter_layer.get_cells()
-
-	for cell in sorter_cells.keys():
-		var sorter: Sorter = sorter_cells[cell] as Sorter
-		if sorter == null or not is_instance_valid(sorter):
-			continue
-
-		if not sorter.should_trigger_on_beat(beat_index):
-			continue
-
-		var cargo: Cargo = occupied_cells.get(cell) as Cargo
-		if cargo == null or not is_instance_valid(cargo):
-			continue
-
-		if cargo.was_resolved_on_beat(beat_index):
-			continue
-
-		var request: Dictionary = {
-			"cargo": cargo,
-			"target_cell": sorter.get_target_cell(),
-		}
-		var target_cell: Vector2i = request["target_cell"]
-		if _world.press_machine_layer.has_cell(target_cell):
-			incoming_press_requests.append(request)
-			continue
-
-		direct_requests.append(request)
-
-
-# 收集空闲压机入口的待处理请求，避免与本拍已触发压机冲突。
-func _collect_idle_press_machine_requests(beat_index: int, triggered_press_machines: Dictionary, direct_requests: Array[Dictionary]) -> void:
-	var press_machine_cells: Dictionary = _world.press_machine_layer.get_cells()
-
-	for cell in press_machine_cells.keys():
-		var press_machine: PressMachine = press_machine_cells[cell] as PressMachine
-		if press_machine == null or not is_instance_valid(press_machine):
-			continue
-
-		if press_machine.is_pressing():
-			continue
-
-		if not press_machine.should_trigger_on_beat(beat_index):
-			continue
-
-		if _is_press_machine_triggered(press_machine, triggered_press_machines):
-			continue
-
-		var cargo: Cargo = _world.cargo_layer.get_cell(cell) as Cargo
-		if cargo == null or not is_instance_valid(cargo):
-			continue
-
-		if cargo.was_resolved_on_beat(beat_index):
-			continue
-
-		direct_requests.append({
-			"cargo": cargo,
-			"target_cell": press_machine.get_target_cell(),
+		machine_plan["producer_spawns"].append({
+			"producer": producer,
+			"target_cell": target_cell,
+			"cargo_type": producer.get_next_cargo_type(),
 		})
 
 
-# 执行基础移动请求，目标冲突时不移动但仍标记本拍已处理。
-func _resolve_simple_move_requests(requests: Array[Dictionary], beat_index: int, occupied_cells: Dictionary) -> void:
-	var target_counts: Dictionary = {}
-	for request in requests:
-		var target_cell: Vector2i = request["target_cell"]
-		target_counts[target_cell] = int(target_counts.get(target_cell, 0)) + 1
+func _create_item_commands(beat_snapshot: Dictionary, machine_plan: Dictionary) -> Dictionary:
+	var item_commands: Dictionary = {}
+	var items: Dictionary = beat_snapshot["items"]
 
-	for request in requests:
-		var cargo: Cargo = request["cargo"] as Cargo
-		if cargo == null or not is_instance_valid(cargo):
+	for cell in items.keys():
+		var item: TransportItem = items[cell] as TransportItem
+		if item == null or not is_instance_valid(item):
 			continue
 
-		cargo.mark_resolved_on_beat(beat_index)
+		item_commands[item.get_instance_id()] = _create_item_command(cell, item, beat_snapshot, machine_plan)
 
-		var target_cell: Vector2i = request["target_cell"]
-		# 多个货物争同一目标格时，本拍全部不移动，但仍视为已参与过结算。
-		if int(target_counts.get(target_cell, 0)) != 1:
+	return item_commands
+
+
+func _create_item_command(cell: Vector2i, item: TransportItem, beat_snapshot: Dictionary, machine_plan: Dictionary) -> Dictionary:
+	var press_machine: PressMachine = _world.press_machine_layer.get_cell(cell) as PressMachine
+	if press_machine != null and is_instance_valid(press_machine):
+		return _create_press_machine_command(cell, item, press_machine, beat_snapshot)
+
+	var packer: Packer = _world.packer_layer.get_cell(cell) as Packer
+	if packer != null and is_instance_valid(packer):
+		return _create_packer_command(cell, item, packer, beat_snapshot)
+
+	var beat_index: int = int(beat_snapshot["beat_index"])
+	var belt: Belt = _world.belt_layer.get_cell(cell) as Belt
+	if belt != null and is_instance_valid(belt) and belt.should_trigger_on_beat(beat_index):
+		return _create_move_command(item, cell, belt.get_target_cell(), {})
+
+	var sorter: Sorter = _world.sorter_layer.get_cell(cell) as Sorter
+	if sorter != null and is_instance_valid(sorter) and sorter.should_trigger_on_beat(beat_index):
+		var sorter_target_cell: Vector2i = machine_plan["sorter_target_cells"].get(cell, sorter.get_target_cell())
+		return _create_move_command(item, cell, sorter_target_cell, {})
+
+	var recycler: Recycler = _world.recycler_layer.get_cell(cell) as Recycler
+	if recycler != null and is_instance_valid(recycler):
+		return _create_recycler_command(cell, item, recycler)
+
+	return _create_wait_command(item, cell)
+
+
+func _create_recycler_command(cell: Vector2i, item: TransportItem, recycler: Recycler) -> Dictionary:
+	var cargo: Cargo = item as Cargo
+	if cargo != null and is_instance_valid(cargo):
+		return _create_command(
+			ITEM_COMMAND_RECYCLE_CARGO,
+			item,
+			cell,
+			{
+				"recycler": recycler,
+			}
+		)
+
+	var product: Product = item as Product
+	if product != null and is_instance_valid(product) and recycler.can_accept_product(product.product_type):
+		return _create_command(
+			ITEM_COMMAND_RECYCLE_PRODUCT,
+			item,
+			cell,
+			{
+				"recycler": recycler,
+			}
+		)
+
+	return _create_wait_command(item, cell)
+
+
+func _create_press_machine_command(cell: Vector2i, item: TransportItem, press_machine: PressMachine, beat_snapshot: Dictionary) -> Dictionary:
+	var cargo: Cargo = item as Cargo
+	if cargo == null or not is_instance_valid(cargo):
+		return _create_wait_command(item, cell)
+
+	if press_machine.is_pressing():
+		var pressed_cargo: Cargo = press_machine.get_pressed_cargo()
+		if pressed_cargo != cargo:
+			return _create_wait_command(item, cell)
+
+		if not press_machine.has_finished_press(int(beat_snapshot["beat_index"])):
+			return _create_wait_command(item, cell)
+
+		return _create_move_command(
+			item,
+			cell,
+			press_machine.get_target_cell(),
+			{
+				"clear_press_machine": press_machine,
+			}
+		)
+
+	var triggered_press_machines: Dictionary = beat_snapshot["triggered_press_machines"]
+	if triggered_press_machines.has(cell):
+		return _create_command(
+			ITEM_COMMAND_PRESS_IN_PLACE,
+			item,
+			cell,
+			{
+				"press_machine": press_machine,
+				"result_type": press_machine.cargo_type,
+			}
+		)
+
+	return _create_move_command(item, cell, press_machine.get_target_cell(), {})
+
+
+func _create_packer_command(cell: Vector2i, item: TransportItem, packer: Packer, beat_snapshot: Dictionary) -> Dictionary:
+	var product: Product = item as Product
+	if product != null and is_instance_valid(product):
+		return _create_move_command(item, cell, packer.get_target_cell(), {})
+
+	var cargo: Cargo = item as Cargo
+	if cargo == null or not is_instance_valid(cargo):
+		return _create_wait_command(item, cell)
+
+	var triggered_packers: Dictionary = beat_snapshot["triggered_packers"]
+	if triggered_packers.has(cell):
+		return _create_command(
+			ITEM_COMMAND_PACK_IN_PLACE,
+			item,
+			cell,
+			{
+				"result_type": cargo.cargo_type,
+			}
+		)
+
+	return _create_move_command(item, cell, packer.get_target_cell(), {})
+
+
+func _create_wait_command(item: TransportItem, from_cell: Vector2i) -> Dictionary:
+	return _create_command(ITEM_COMMAND_WAIT, item, from_cell, {})
+
+
+func _create_move_command(item: TransportItem, from_cell: Vector2i, target_cell: Vector2i, extra_data: Dictionary) -> Dictionary:
+	var command: Dictionary = _create_command(ITEM_COMMAND_MOVE_TO_CELL, item, from_cell, extra_data)
+	command["target_cell"] = target_cell
+	return command
+
+
+func _create_command(command_type: StringName, item: TransportItem, from_cell: Vector2i, extra_data: Dictionary) -> Dictionary:
+	var command: Dictionary = {
+		"type": command_type,
+		"item": item,
+		"from_cell": from_cell,
+	}
+
+	for key in extra_data.keys():
+		command[key] = extra_data[key]
+
+	return command
+
+
+func _resolve_move_successes(snapshot_items: Dictionary, item_commands: Dictionary) -> Dictionary:
+	var move_success_by_id: Dictionary = {}
+	var target_to_item_ids: Dictionary = {}
+
+	for item_id in item_commands.keys():
+		var command: Dictionary = item_commands[item_id]
+		if not _is_move_command(command["type"]):
 			continue
 
-		if occupied_cells.has(target_cell):
+		var target_cell: Vector2i = command["target_cell"]
+		if not target_to_item_ids.has(target_cell):
+			target_to_item_ids[target_cell] = []
+
+		var item_ids: Array = target_to_item_ids[target_cell]
+		item_ids.append(item_id)
+		target_to_item_ids[target_cell] = item_ids
+
+	var resolve_states: Dictionary = {}
+	for item_id in item_commands.keys():
+		var command: Dictionary = item_commands[item_id]
+		if not _is_move_command(command["type"]):
 			continue
 
-		cargo.move_to_cell(target_cell)
+		move_success_by_id[item_id] = _resolve_move_success(
+			int(item_id),
+			snapshot_items,
+			item_commands,
+			target_to_item_ids,
+			resolve_states,
+			move_success_by_id
+		)
+
+	return move_success_by_id
 
 
-# 处理朝向压机入口的请求：忙碌、冲突、占用和成功进入压机均分情况处理。
-func _resolve_incoming_press_requests(incoming_press_requests: Array[Dictionary], beat_index: int, triggered_press_machines: Dictionary) -> void:
-	var requests_by_cell: Dictionary = {}
-	for request in incoming_press_requests:
-		var target_cell: Vector2i = request["target_cell"]
-		if not requests_by_cell.has(target_cell):
-			requests_by_cell[target_cell] = []
+func _resolve_move_success(item_id: int, snapshot_items: Dictionary, item_commands: Dictionary, target_to_item_ids: Dictionary, resolve_states: Dictionary, move_success_by_id: Dictionary) -> bool:
+	if move_success_by_id.has(item_id):
+		return bool(move_success_by_id[item_id])
 
-		var requests_at_cell: Array = requests_by_cell[target_cell]
-		requests_at_cell.append(request)
-		requests_by_cell[target_cell] = requests_at_cell
+	var resolve_state: int = int(resolve_states.get(item_id, 0))
+	if resolve_state == 1:
+		return false
 
-	for cell in requests_by_cell.keys():
-		var press_machine: PressMachine = _world.press_machine_layer.get_cell(cell) as PressMachine
-		if press_machine == null or not is_instance_valid(press_machine):
+	resolve_states[item_id] = 1
+
+	var command: Dictionary = item_commands[item_id]
+	var target_cell: Vector2i = command["target_cell"]
+	var incoming_item_ids: Array = target_to_item_ids.get(target_cell, [])
+	if incoming_item_ids.size() != 1:
+		move_success_by_id[item_id] = false
+		resolve_states[item_id] = 2
+		return false
+
+	var target_occupant: TransportItem = snapshot_items.get(target_cell) as TransportItem
+	if target_occupant == null or not is_instance_valid(target_occupant):
+		move_success_by_id[item_id] = true
+		resolve_states[item_id] = 2
+		return true
+
+	if target_occupant.get_instance_id() == item_id:
+		move_success_by_id[item_id] = false
+		resolve_states[item_id] = 2
+		return false
+
+	var can_release_target_cell: bool = _will_cell_be_released(
+		target_cell,
+		snapshot_items,
+		item_commands,
+		target_to_item_ids,
+		resolve_states,
+		move_success_by_id
+	)
+	move_success_by_id[item_id] = can_release_target_cell
+	resolve_states[item_id] = 2
+	return can_release_target_cell
+
+
+func _will_cell_be_released(cell: Vector2i, snapshot_items: Dictionary, item_commands: Dictionary, target_to_item_ids: Dictionary, resolve_states: Dictionary, move_success_by_id: Dictionary) -> bool:
+	var occupant: TransportItem = snapshot_items.get(cell) as TransportItem
+	if occupant == null or not is_instance_valid(occupant):
+		return true
+
+	var occupant_id: int = occupant.get_instance_id()
+	if not item_commands.has(occupant_id):
+		return false
+
+	var occupant_command: Dictionary = item_commands[occupant_id]
+	var occupant_command_type: StringName = occupant_command["type"]
+	if occupant_command_type == ITEM_COMMAND_RECYCLE_PRODUCT or occupant_command_type == ITEM_COMMAND_RECYCLE_CARGO:
+		return true
+
+	if not _is_move_command(occupant_command_type):
+		return false
+
+	return _resolve_move_success(
+		occupant_id,
+		snapshot_items,
+		item_commands,
+		target_to_item_ids,
+		resolve_states,
+		move_success_by_id
+	)
+
+
+func _apply_item_commands(beat_index: int, item_commands: Dictionary, move_success_by_id: Dictionary) -> bool:
+	var did_recycler_progress: bool = false
+
+	for command in item_commands.values():
+		var item: TransportItem = command["item"] as TransportItem
+		if item == null or not is_instance_valid(item):
 			continue
 
-		var requests_at_cell: Array = requests_by_cell[cell]
-		if press_machine.is_pressing():
-			# 冲床忙碌时，撞入的货物直接销毁，体现“压机入口不可堆积”的规则。
-			for request in requests_at_cell:
-				var busy_cargo: Cargo = request["cargo"] as Cargo
-				if busy_cargo == null or not is_instance_valid(busy_cargo):
+		item.mark_resolved_on_beat(beat_index)
+
+	for command in item_commands.values():
+		var command_type: StringName = command["type"]
+		if _is_move_command(command_type):
+			continue
+
+		var item: TransportItem = command["item"] as TransportItem
+		if item == null or not is_instance_valid(item):
+			continue
+
+		match command_type:
+			ITEM_COMMAND_PACK_IN_PLACE:
+				var cargo_to_pack: Cargo = item as Cargo
+				if cargo_to_pack == null or not is_instance_valid(cargo_to_pack):
 					continue
 
-				busy_cargo.mark_resolved_on_beat(beat_index)
-				busy_cargo.remove_from_world()
-
-			continue
-
-		if requests_at_cell.size() != 1:
-			for request in requests_at_cell:
-				var blocked_cargo: Cargo = request["cargo"] as Cargo
-				if blocked_cargo == null or not is_instance_valid(blocked_cargo):
+				var packed_cell: Vector2i = command["from_cell"]
+				var product_type: String = String(command["result_type"])
+				cargo_to_pack.remove_from_world()
+				var product: Product = _world.spawn_product(packed_cell, product_type)
+				if product != null:
+					product.mark_resolved_on_beat(beat_index)
+			ITEM_COMMAND_PRESS_IN_PLACE:
+				var cargo_to_press: Cargo = item as Cargo
+				var press_machine: PressMachine = command["press_machine"] as PressMachine
+				if cargo_to_press == null or not is_instance_valid(cargo_to_press):
 					continue
 
-				blocked_cargo.mark_resolved_on_beat(beat_index)
+				cargo_to_press.cargo_type = String(command["result_type"])
+				if press_machine != null and is_instance_valid(press_machine) and not press_machine.is_pressing():
+					press_machine.begin_press(cargo_to_press, beat_index)
+			ITEM_COMMAND_RECYCLE_CARGO:
+				var recycler_for_cargo: Recycler = command["recycler"] as Recycler
+				var cargo_to_destroy: Cargo = item as Cargo
+				if recycler_for_cargo != null and is_instance_valid(recycler_for_cargo) and cargo_to_destroy != null and is_instance_valid(cargo_to_destroy):
+					var cargo_type: String = cargo_to_destroy.cargo_type
+					cargo_to_destroy.remove_from_world()
+					recycler_for_cargo.log_cargo_destroyed(cargo_type)
+			ITEM_COMMAND_RECYCLE_PRODUCT:
+				var recycler_for_product: Recycler = command["recycler"] as Recycler
+				var product_to_collect: Product = item as Product
+				if recycler_for_product != null and is_instance_valid(recycler_for_product) and product_to_collect != null and is_instance_valid(product_to_collect):
+					if recycler_for_product.collect_product(product_to_collect):
+						did_recycler_progress = true
+			_:
+				pass
 
+	var successful_moves: Array[Dictionary] = []
+	for item_id in move_success_by_id.keys():
+		if not bool(move_success_by_id[item_id]):
 			continue
 
-		if _world.cargo_layer.has_cell(cell):
-			var occupied_cargo: Cargo = requests_at_cell[0]["cargo"] as Cargo
-			if occupied_cargo != null and is_instance_valid(occupied_cargo):
-				occupied_cargo.mark_resolved_on_beat(beat_index)
-
+		var command: Dictionary = item_commands[item_id]
+		var item: TransportItem = command["item"] as TransportItem
+		if item == null or not is_instance_valid(item):
 			continue
 
-		var request: Dictionary = requests_at_cell[0]
-		var cargo: Cargo = request["cargo"] as Cargo
-		if cargo == null or not is_instance_valid(cargo):
+		item.begin_parallel_move()
+		successful_moves.append(command)
+
+	for command in successful_moves:
+		var item: TransportItem = command["item"] as TransportItem
+		if item == null or not is_instance_valid(item):
 			continue
 
-		cargo.mark_resolved_on_beat(beat_index)
+		item.complete_parallel_move(command["target_cell"])
 
-		if _is_press_machine_triggered(press_machine, triggered_press_machines):
-			cargo.move_to_cell(cell)
-			continue
+		var clear_press_machine: PressMachine = command.get("clear_press_machine") as PressMachine
+		if clear_press_machine != null and is_instance_valid(clear_press_machine):
+			clear_press_machine.clear_pressed_cargo()
 
-		cargo.move_to_cell(cell)
-
-
-# 先结算已完成压机输出，再启动新一轮被信号触发的压制。
-func _resolve_press_machines(beat_index: int, triggered_press_machines: Dictionary) -> void:
-	# 先吐出上一轮压制结果，再开始新的压制，保证状态切换清晰。
-	_resolve_finished_press_outputs(beat_index)
-	_start_triggered_presses(beat_index, triggered_press_machines)
+	return did_recycler_progress
 
 
-# 处理打包机动作：标记已打包并尝试按目标格移动。
-func _resolve_packers(beat_index: int, triggered_packers: Dictionary) -> void:
-	var output_requests: Array[Dictionary] = []
-	var target_counts: Dictionary = {}
-
-	for cell in triggered_packers.keys():
-		var packer_state: Dictionary = triggered_packers[cell]
-		var packer: Packer = packer_state.get("packer") as Packer
-		var cargo: Cargo = packer_state.get("cargo") as Cargo
-		if packer == null or not is_instance_valid(packer):
-			continue
-
-		if cargo == null or not is_instance_valid(cargo):
-			continue
-
-		if cargo.get_registered_cell() != packer.get_registered_cell():
-			continue
-
-		var target_cell: Vector2i = packer.get_target_cell()
-		output_requests.append({
-			"cargo": cargo,
-			"target_cell": target_cell,
-		})
-
-		target_counts[target_cell] = int(target_counts.get(target_cell, 0)) + 1
-
-	for request in output_requests:
-		var cargo: Cargo = request["cargo"] as Cargo
-		if cargo == null or not is_instance_valid(cargo):
-			continue
-
-		cargo.is_packaged = true
-		cargo.mark_resolved_on_beat(beat_index)
-
-		var target_cell: Vector2i = request["target_cell"]
-		if int(target_counts.get(target_cell, 0)) != 1:
-			continue
-
-		if _world.cargo_layer.has_cell(target_cell):
-			continue
-
-		cargo.move_to_cell(target_cell)
-
-
-# 输出已完成压制的货物，并检查目标格冲突后清理压机状态。
-func _resolve_finished_press_outputs(beat_index: int) -> void:
-	var press_machine_cells: Dictionary = _world.press_machine_layer.get_cells()
-	var output_requests: Array[Dictionary] = []
-	var target_counts: Dictionary = {}
-
-	for cell in press_machine_cells.keys():
-		var press_machine: PressMachine = press_machine_cells[cell] as PressMachine
-		if press_machine == null or not is_instance_valid(press_machine):
-			continue
-
-		if not press_machine.has_finished_press(beat_index):
-			continue
-
-		if not press_machine.should_trigger_on_beat(beat_index):
-			continue
-
-		var cargo: Cargo = press_machine.get_pressed_cargo()
-		if cargo == null or not is_instance_valid(cargo):
-			press_machine.clear_pressed_cargo()
-			continue
-
-		cargo.cargo_type = press_machine.cargo_type
-		var target_cell: Vector2i = press_machine.get_target_cell()
-		output_requests.append({
-			"cargo": cargo,
-			"target_cell": target_cell,
-			"press_machine": press_machine,
-		})
-		target_counts[target_cell] = int(target_counts.get(target_cell, 0)) + 1
-
-	for request in output_requests:
-		var press_machine: PressMachine = request["press_machine"] as PressMachine
-		var cargo: Cargo = request["cargo"] as Cargo
-		if press_machine == null or not is_instance_valid(press_machine):
-			continue
-
-		if cargo == null or not is_instance_valid(cargo):
-			press_machine.clear_pressed_cargo()
-			continue
-
-		cargo.mark_resolved_on_beat(beat_index)
-
-		var target_cell: Vector2i = request["target_cell"]
-		if int(target_counts.get(target_cell, 0)) != 1:
-			continue
-
-		if _world.cargo_layer.has_cell(target_cell):
-			continue
-
-		if not cargo.move_to_cell(target_cell):
-			continue
-
-		press_machine.clear_pressed_cargo()
-
-
-# 对当前拍内被触发且可用的压机开始压制输入货物。
-func _start_triggered_presses(beat_index: int, triggered_press_machines: Dictionary) -> void:
-	for cell in triggered_press_machines.keys():
-		var press_machine: PressMachine = triggered_press_machines[cell] as PressMachine
-		if press_machine == null or not is_instance_valid(press_machine):
-			continue
-
-		if press_machine.is_pressing():
-			continue
-
-		var cargo: Cargo = _world.cargo_layer.get_cell(cell) as Cargo
-		if cargo == null or not is_instance_valid(cargo):
-			continue
-
-		press_machine.begin_press(cargo, beat_index)
-		cargo.mark_resolved_on_beat(beat_index)
-
-
-# 按触发结果切换分拣机的输出方向/状态。
-func _toggle_triggered_sorters(triggered_sorters: Dictionary) -> void:
-	for cell in triggered_sorters.keys():
-		var sorter: Sorter = triggered_sorters[cell] as Sorter
+func _apply_sorter_toggles(machine_plan: Dictionary) -> void:
+	var sorter_toggle_cells: Dictionary = machine_plan["sorter_toggle_cells"]
+	for cell in sorter_toggle_cells.keys():
+		var sorter: Sorter = sorter_toggle_cells[cell] as Sorter
 		if sorter == null or not is_instance_valid(sorter):
 			continue
 
 		sorter.toggle_output()
 
 
-# 判断某台压机是否被当前信号波命中触发。
-func _is_press_machine_triggered(press_machine: PressMachine, triggered_press_machines: Dictionary) -> bool:
-	if press_machine == null or not is_instance_valid(press_machine):
-		return false
+func _apply_producer_spawns(beat_index: int, machine_plan: Dictionary) -> void:
+	var producer_spawns: Array = machine_plan["producer_spawns"]
+	var target_counts: Dictionary = {}
 
-	return triggered_press_machines.has(press_machine.get_registered_cell())
+	for spawn_request in producer_spawns:
+		var target_cell: Vector2i = spawn_request["target_cell"]
+		target_counts[target_cell] = int(target_counts.get(target_cell, 0)) + 1
 
-
-# 处理所有回收机的回收进度，并在全部达成时结束关卡。
-func _resolve_recycler_collection() -> void:
-	var recycler_cells: Dictionary = _world.recycler_layer.get_cells()
-	var did_progress: bool = false
-
-	for cell in recycler_cells.keys():
-		var recycler: Recycler = recycler_cells[cell] as Recycler
-		assert(recycler != null and is_instance_valid(recycler), "recycler_layer contains an invalid Recycler at %s." % [cell])
-
-		var cargo: Cargo = _world.cargo_layer.get_cell(cell) as Cargo
-		if cargo == null or not is_instance_valid(cargo):
+	for spawn_request in producer_spawns:
+		var producer: Producer = spawn_request["producer"] as Producer
+		if producer == null or not is_instance_valid(producer):
 			continue
 
-		if recycler.collect_cargo(cargo):
-			did_progress = true
+		var target_cell: Vector2i = spawn_request["target_cell"]
+		if int(target_counts.get(target_cell, 0)) != 1:
+			continue
 
-	# 只有本次确实发生回收进度时才检查胜利，避免无意义重复触发。
-	if did_progress and _world.are_all_recyclers_completed():
-		GM.finish_game(true)
+		if _world.item_layer.has_cell(target_cell):
+			continue
+
+		var cargo: Cargo = _world.spawn_cargo(target_cell, String(spawn_request["cargo_type"]))
+		if cargo == null:
+			continue
+
+		cargo.mark_resolved_on_beat(beat_index)
+		producer.mark_produced()
+
+
+func _get_sorter_target_cell(sorter: Sorter, should_toggle: bool) -> Vector2i:
+	var current_target_cell: Vector2i = sorter.get_target_cell()
+	if not should_toggle:
+		return current_target_cell
+
+	var sorter_cell: Vector2i = sorter.get_registered_cell()
+	var left_target_cell: Vector2i = sorter_cell + _sorter_direction_to_offset(_rotate_sorter_left(sorter.input_direction))
+	var right_target_cell: Vector2i = sorter_cell + _sorter_direction_to_offset(_rotate_sorter_right(sorter.input_direction))
+	if current_target_cell == left_target_cell:
+		return right_target_cell
+
+	return left_target_cell
+
+
+func _rotate_sorter_left(direction: Sorter.InputDirection) -> Sorter.InputDirection:
+	return wrapi(int(direction) - 1, 0, 4) as Sorter.InputDirection
+
+
+func _rotate_sorter_right(direction: Sorter.InputDirection) -> Sorter.InputDirection:
+	return wrapi(int(direction) + 1, 0, 4) as Sorter.InputDirection
+
+
+func _sorter_direction_to_offset(direction: Sorter.InputDirection) -> Vector2i:
+	match direction:
+		Sorter.InputDirection.UP:
+			return Vector2i.UP
+		Sorter.InputDirection.RIGHT:
+			return Vector2i.RIGHT
+		Sorter.InputDirection.DOWN:
+			return Vector2i.DOWN
+		_:
+			return Vector2i.LEFT
+
+
+func _is_move_command(command_type: StringName) -> bool:
+	return command_type == ITEM_COMMAND_MOVE_TO_CELL

@@ -11,15 +11,16 @@ const CELL_KEYS := ["x", "y", "belt", "sorter", "cargo", "producer", "recycler",
 const BELT_KEYS := ["facing", "turn_mode", "beat_interval"]
 const SORTER_KEYS := ["input_direction", "initial_output_side"]
 const CARGO_KEYS := ["type"]
-const PRODUCER_KEYS := ["facing", "beat_interval", "cargo_type"]
-const RECYCLER_KEYS := ["cargo_type", "required_count"]
+const PRODUCER_KEYS := ["facing", "beat_interval", "production_sequence"]
+const RECYCLER_KEYS := ["targets"]
+const RECYCLER_TARGET_KEYS := ["product_type", "required_count"]
 const SIGNAL_TOWER_KEYS: Array = ["max_steps"]
 const PRESS_MACHINE_KEYS := ["facing", "cargo_type", "beat_interval"]
 const PACKER_KEYS := ["facing"]
 const BELT_FACING_VALUES := ["UP", "RIGHT", "DOWN", "LEFT"]
 const BELT_TURN_MODE_VALUES := ["STRAIGHT", "LEFT", "RIGHT"]
 const SORTER_OUTPUT_SIDE_VALUES := ["LEFT", "RIGHT"]
-const CARGO_TYPE_VALUES := ["CARGO_1", "CARGO_2", "CARGO_3"]
+const CARGO_TYPE_VALUES: Array[String] = CargoType.VALUES
 
 var level_id: String = ""
 var display_name: String = ""
@@ -300,8 +301,8 @@ static func _parse_cargo(raw_cargo: Dictionary, cell_label: String, source_label
 	if not _has_non_empty_string(raw_cargo, "type"):
 		return _validation_error(source_label, "%s.type must be a non-empty string" % cargo_label)
 
-	var cargo_type: String = String(raw_cargo["type"]).strip_edges().to_upper()
-	if not CARGO_TYPE_VALUES.has(cargo_type):
+	var cargo_type: String = CargoType.normalize(raw_cargo["type"])
+	if not CargoType.is_valid(cargo_type):
 		return _validation_error(source_label, "%s.type must be one of %s" % [cargo_label, CARGO_TYPE_VALUES])
 
 	return {
@@ -320,23 +321,31 @@ static func _parse_producer(raw_producer: Dictionary, cell_label: String, source
 	if not _has_positive_integer_number(raw_producer, "beat_interval"):
 		return _validation_error(source_label, "%s.beat_interval must be a positive integer" % producer_label)
 
-	if not _has_non_empty_string(raw_producer, "cargo_type"):
-		return _validation_error(source_label, "%s.cargo_type must be a non-empty string" % producer_label)
+	if not raw_producer.has("production_sequence") or typeof(raw_producer["production_sequence"]) != TYPE_ARRAY:
+		return _validation_error(source_label, "%s.production_sequence must be an array" % producer_label)
 
 	var facing: String = String(raw_producer["facing"]).strip_edges().to_upper()
 	var beat_interval: int = int(raw_producer["beat_interval"])
-	var cargo_type: String = String(raw_producer["cargo_type"]).strip_edges().to_upper()
+	var normalized_sequence: Array[String] = []
+	var raw_sequence: Array = Array(raw_producer["production_sequence"])
 
 	if not BELT_FACING_VALUES.has(facing):
 		return _validation_error(source_label, "%s.facing must be one of %s" % [producer_label, BELT_FACING_VALUES])
 
-	if not CARGO_TYPE_VALUES.has(cargo_type):
-		return _validation_error(source_label, "%s.cargo_type must be one of %s" % [producer_label, CARGO_TYPE_VALUES])
+	for index in range(raw_sequence.size()):
+		if typeof(raw_sequence[index]) != TYPE_STRING:
+			return _validation_error(source_label, "%s.production_sequence[%d] must be a string" % [producer_label, index])
+
+		var cargo_type: String = CargoType.normalize(raw_sequence[index])
+		if not CargoType.is_valid(cargo_type):
+			return _validation_error(source_label, "%s.production_sequence[%d] must be one of %s" % [producer_label, index, CARGO_TYPE_VALUES])
+
+		normalized_sequence.append(cargo_type)
 
 	return {
 		"facing": facing,
 		"beat_interval": beat_interval,
-		"cargo_type": cargo_type,
+		"production_sequence": normalized_sequence,
 	}
 
 
@@ -345,19 +354,53 @@ static func _parse_recycler(raw_recycler: Dictionary, cell_label: String, source
 	if not _ensure_allowed_keys(raw_recycler, RECYCLER_KEYS, recycler_label, source_label):
 		return null
 
-	if not _has_non_empty_string(raw_recycler, "cargo_type"):
-		return _validation_error(source_label, "%s.cargo_type must be a non-empty string" % recycler_label)
+	if not raw_recycler.has("targets") or typeof(raw_recycler["targets"]) != TYPE_ARRAY:
+		return _validation_error(source_label, "%s.targets must be an array" % recycler_label)
 
-	if not _has_positive_integer_number(raw_recycler, "required_count"):
-		return _validation_error(source_label, "%s.required_count must be a positive integer" % recycler_label)
+	var raw_targets: Array = Array(raw_recycler["targets"])
+	if raw_targets.is_empty():
+		return _validation_error(source_label, "%s.targets must contain at least one target" % recycler_label)
 
-	var cargo_type: String = String(raw_recycler["cargo_type"]).strip_edges().to_upper()
-	if not CARGO_TYPE_VALUES.has(cargo_type):
-		return _validation_error(source_label, "%s.cargo_type must be one of %s" % [recycler_label, CARGO_TYPE_VALUES])
+	var normalized_targets: Array[Dictionary] = []
+	var seen_product_types: Dictionary = {}
+	for index in range(raw_targets.size()):
+		if typeof(raw_targets[index]) != TYPE_DICTIONARY:
+			return _validation_error(source_label, "%s.targets[%d] must be an object" % [recycler_label, index])
+
+		var normalized_target: Variant = _parse_recycler_target(raw_targets[index], recycler_label, index, source_label)
+		if normalized_target == null:
+			return null
+
+		var product_type: String = String(normalized_target["product_type"])
+		if seen_product_types.has(product_type):
+			return _validation_error(source_label, "%s.targets[%d].product_type duplicates %s" % [recycler_label, index, product_type])
+
+		seen_product_types[product_type] = true
+		normalized_targets.append(normalized_target)
 
 	return {
-		"cargo_type": cargo_type,
-		"required_count": int(raw_recycler["required_count"]),
+		"targets": normalized_targets,
+	}
+
+
+static func _parse_recycler_target(raw_target: Dictionary, recycler_label: String, index: int, source_label: String) -> Variant:
+	var target_label: String = "%s.targets[%d]" % [recycler_label, index]
+	if not _ensure_allowed_keys(raw_target, RECYCLER_TARGET_KEYS, target_label, source_label):
+		return null
+
+	if not _has_non_empty_string(raw_target, "product_type"):
+		return _validation_error(source_label, "%s.product_type must be a non-empty string" % target_label)
+
+	if not _has_positive_integer_number(raw_target, "required_count"):
+		return _validation_error(source_label, "%s.required_count must be a positive integer" % target_label)
+
+	var product_type: String = CargoType.normalize(raw_target["product_type"])
+	if not CargoType.is_valid(product_type):
+		return _validation_error(source_label, "%s.product_type must be one of %s" % [target_label, CARGO_TYPE_VALUES])
+
+	return {
+		"product_type": product_type,
+		"required_count": int(raw_target["required_count"]),
 	}
 
 
@@ -391,13 +434,13 @@ static func _parse_press_machine(raw_press_machine: Dictionary, cell_label: Stri
 		return _validation_error(source_label, "%s.beat_interval must be a positive integer" % press_machine_label)
 
 	var facing: String = String(raw_press_machine["facing"]).strip_edges().to_upper()
-	var cargo_type: String = String(raw_press_machine["cargo_type"]).strip_edges().to_upper()
+	var cargo_type: String = CargoType.normalize(raw_press_machine["cargo_type"])
 	var beat_interval: int = int(raw_press_machine["beat_interval"])
 
 	if not BELT_FACING_VALUES.has(facing):
 		return _validation_error(source_label, "%s.facing must be one of %s" % [press_machine_label, BELT_FACING_VALUES])
 
-	if not CARGO_TYPE_VALUES.has(cargo_type):
+	if not CargoType.is_valid(cargo_type):
 		return _validation_error(source_label, "%s.cargo_type must be one of %s" % [press_machine_label, CARGO_TYPE_VALUES])
 
 	if beat_interval != 1 and beat_interval != 2:

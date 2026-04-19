@@ -3,13 +3,15 @@ extends Node2D
 
 # 货物预制体模板，用于按格子动态创建货物实例。
 const CARGO_SCENE: PackedScene = preload("res://prefabs/cargo.tscn")
+# 产品预制体模板，用于按格子动态创建产品实例。
+const PRODUCT_SCENE: PackedScene = preload("res://prefabs/product.tscn")
 # 环境预制体模板，用于加载世界基础场景。
 const ENVIRONMENT_SCENE: PackedScene = preload("res://prefabs/environment.tscn")
 
 # 主层：承载基础元胞网格逻辑与通用世界映射。
 var main_layer: MapLayer
-# 货物层：记录所有货物实例的占用与移动。
-var cargo_layer: MapLayer
+# 运输物层：记录所有 cargo / product 实例的占用与移动。
+var item_layer: MapLayer
 # 传送带层：处理有序运输设备的每拍行为。
 var belt_layer: MapLayer
 # 分拣机层：记录按信号触发的分拣节点状态。
@@ -97,8 +99,9 @@ func get_total_recycler_required_count() -> int:
 	var total_required_count: int = 0
 	var recycler_cells: Dictionary = recycler_layer.get_cells()
 	for cell in recycler_cells.keys():
-		var recycler: Recycler = recycler_cells[cell]
-		total_required_count += recycler.required_count
+		var recycler: Recycler = recycler_cells[cell] as Recycler
+		assert(recycler != null and is_instance_valid(recycler), "recycler_layer contains an invalid Recycler at %s." % [cell])
+		total_required_count += recycler.get_total_required_count()
 
 	return total_required_count
 
@@ -111,7 +114,7 @@ func get_remaining_recycler_required_count() -> int:
 		var recycler: Recycler = recycler_cells[cell] as Recycler
 		assert(recycler != null and is_instance_valid(recycler), "recycler_layer contains an invalid Recycler at %s." % [cell])
 
-		remaining_required_count += recycler.get_remaining_count()
+		remaining_required_count += recycler.get_remaining_total_count()
 
 	return remaining_required_count
 
@@ -140,8 +143,7 @@ func add_level_content(node: Node) -> void:
 
 # 在指定格子生成货物实例，失败时返回 null。
 func spawn_cargo(cell: Vector2i, cargo_type: String) -> Cargo:
-	# 同一格同一时刻只允许存在一个货物。
-	if cargo_layer.has_cell(cell):
+	if item_layer.has_cell(cell):
 		return null
 
 	var cargo: Cargo = CARGO_SCENE.instantiate() as Cargo
@@ -151,12 +153,27 @@ func spawn_cargo(cell: Vector2i, cargo_type: String) -> Cargo:
 	return cargo
 
 
-# 拍点触发时执行完整结算流程：产出、运输、加工、回收、信号推进。
+# 在指定格子生成产品实例，失败时返回 null。
+func spawn_product(cell: Vector2i, product_type: String) -> Product:
+	if item_layer.has_cell(cell):
+		return null
+
+	var product: Product = PRODUCT_SCENE.instantiate() as Product
+	product.product_type = product_type
+	product.place_at_cell(self, cell)
+	add_level_content(product)
+	return product
+
+
+func get_transport_item(cell: Vector2i) -> TransportItem:
+	return item_layer.get_cell(cell) as TransportItem
+
+
+# 拍点触发时先固定本拍信号快照，再执行完整结算流程。
 func _on_beat_fired(beat_index: int, _beat_time: float) -> void:
 	# World 只负责编排顺序，具体规则交给独立系统处理。
-	var triggered_devices: Dictionary = _signal_system.collect_triggered_devices()
-	_simulation.resolve_beat(beat_index, triggered_devices)
-	_signal_system.advance_signals(beat_index)
+	var signal_snapshot: Dictionary = _signal_system.begin_beat(beat_index)
+	_simulation.resolve_beat(beat_index, signal_snapshot)
 
 
 # 按当前拍向全场信号塔尝试发射信号，单拍只允许一次发射。
@@ -167,7 +184,7 @@ func try_emit_signal_towers_for_current_beat() -> bool:
 # 初始化所有运行时图层，后续关卡切换只清内容不重建结构。
 func _init_layers() -> void:
 	main_layer = _create_layer()
-	cargo_layer = _create_layer()
+	item_layer = _create_layer()
 	belt_layer = _create_layer()
 	sorter_layer = _create_layer()
 	producer_layer = _create_layer()
@@ -180,7 +197,7 @@ func _init_layers() -> void:
 # 清空所有运行时图层。
 func _clear_layers() -> void:
 	main_layer.clear()
-	cargo_layer.clear()
+	item_layer.clear()
 	belt_layer.clear()
 	sorter_layer.clear()
 	producer_layer.clear()
