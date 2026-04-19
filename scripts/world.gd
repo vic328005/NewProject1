@@ -7,6 +7,7 @@ const ENVIRONMENT_SCENE: PackedScene = preload("res://prefabs/environment.tscn")
 var main_layer: MapLayer
 var cargo_layer: MapLayer
 var belt_layer: MapLayer
+var sorter_layer: MapLayer
 var producer_layer: MapLayer
 var recycler_layer: MapLayer
 var signal_tower_layer: MapLayer
@@ -29,6 +30,7 @@ func _init(config: Config) -> void:
 	main_layer = _create_layer()
 	cargo_layer = _create_layer()
 	belt_layer = _create_layer()
+	sorter_layer = _create_layer()
 	producer_layer = _create_layer()
 	recycler_layer = _create_layer()
 	signal_tower_layer = _create_layer()
@@ -91,6 +93,7 @@ func clear_level_content() -> void:
 	main_layer.clear()
 	cargo_layer.clear()
 	belt_layer.clear()
+	sorter_layer.clear()
 	producer_layer.clear()
 	recycler_layer.clear()
 	signal_tower_layer.clear()
@@ -130,9 +133,11 @@ func _create_layer() -> MapLayer:
 
 
 func _on_beat_fired(beat_index: int, _beat_time: float) -> void:
+	var triggered_sorters: Dictionary = _collect_triggered_sorters()
 	var triggered_press_machines: Dictionary = _collect_triggered_press_machines()
 	var triggered_packers: Dictionary = _collect_triggered_packers()
 	_resolve_producer_spawns(beat_index)
+	_toggle_triggered_sorters(triggered_sorters)
 	_resolve_transport(beat_index, triggered_press_machines)
 	_resolve_packers(beat_index, triggered_packers)
 	_resolve_press_machines(beat_index, triggered_press_machines)
@@ -184,6 +189,7 @@ func _resolve_transport(beat_index: int, triggered_press_machines: Dictionary) -
 	var incoming_press_requests: Array[Dictionary] = []
 	var occupied_cells: Dictionary = cargo_layer.get_cells().duplicate()
 	_collect_belt_requests(beat_index, occupied_cells, direct_requests, incoming_press_requests)
+	_collect_sorter_requests(beat_index, occupied_cells, direct_requests, incoming_press_requests)
 	_collect_idle_press_machine_requests(beat_index, triggered_press_machines, direct_requests)
 	_resolve_simple_move_requests(direct_requests, beat_index, occupied_cells)
 	_resolve_incoming_press_requests(incoming_press_requests, beat_index, triggered_press_machines)
@@ -210,6 +216,36 @@ func _collect_belt_requests(beat_index: int, occupied_cells: Dictionary, direct_
 		var request: Dictionary = {
 			"cargo": cargo,
 			"target_cell": belt.get_target_cell(),
+		}
+		var target_cell: Vector2i = request["target_cell"]
+		if press_machine_layer.has_cell(target_cell):
+			incoming_press_requests.append(request)
+			continue
+
+		direct_requests.append(request)
+
+
+func _collect_sorter_requests(beat_index: int, occupied_cells: Dictionary, direct_requests: Array[Dictionary], incoming_press_requests: Array[Dictionary]) -> void:
+	var sorter_cells: Dictionary = sorter_layer.get_cells()
+
+	for cell in sorter_cells.keys():
+		var sorter: Sorter = sorter_cells[cell] as Sorter
+		if sorter == null or not is_instance_valid(sorter):
+			continue
+
+		if not sorter.should_trigger_on_beat(beat_index):
+			continue
+
+		var cargo: Cargo = occupied_cells.get(cell) as Cargo
+		if cargo == null or not is_instance_valid(cargo):
+			continue
+
+		if cargo.was_resolved_on_beat(beat_index):
+			continue
+
+		var request: Dictionary = {
+			"cargo": cargo,
+			"target_cell": sorter.get_target_cell(),
 		}
 		var target_cell: Vector2i = request["target_cell"]
 		if press_machine_layer.has_cell(target_cell):
@@ -455,6 +491,25 @@ func _start_triggered_presses(beat_index: int, triggered_press_machines: Diction
 		cargo.mark_resolved_on_beat(beat_index)
 
 
+func _collect_triggered_sorters() -> Dictionary:
+	var triggered_sorters: Dictionary = {}
+
+	for signal_wave_node in _active_signals:
+		var signal_wave: SignalWave = signal_wave_node as SignalWave
+		if signal_wave == null or not is_instance_valid(signal_wave):
+			continue
+
+		var wave_cells: Array[Vector2i] = signal_wave.get_wave_cells()
+		for cell in wave_cells:
+			var sorter: Sorter = sorter_layer.get_cell(cell) as Sorter
+			if sorter == null or not is_instance_valid(sorter):
+				continue
+
+			triggered_sorters[cell] = sorter
+
+	return triggered_sorters
+
+
 func _collect_triggered_press_machines() -> Dictionary:
 	var triggered_press_machines: Dictionary = {}
 
@@ -495,6 +550,15 @@ func _collect_triggered_packers() -> Dictionary:
 			}
 
 	return triggered_packers
+
+
+func _toggle_triggered_sorters(triggered_sorters: Dictionary) -> void:
+	for cell in triggered_sorters.keys():
+		var sorter: Sorter = triggered_sorters[cell] as Sorter
+		if sorter == null or not is_instance_valid(sorter):
+			continue
+
+		sorter.toggle_output()
 
 
 func _is_press_machine_triggered(press_machine: PressMachine, triggered_press_machines: Dictionary) -> bool:

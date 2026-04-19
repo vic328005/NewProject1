@@ -9,8 +9,9 @@ const TOP_LEVEL_KEYS := [
 	"beat_bpm",
 	"cells",
 ]
-const CELL_KEYS := ["x", "y", "belt", "cargo", "producer", "recycler", "signal_tower", "press_machine", "packer"]
+const CELL_KEYS := ["x", "y", "belt", "sorter", "cargo", "producer", "recycler", "signal_tower", "press_machine", "packer"]
 const BELT_KEYS := ["facing", "turn_mode", "beat_interval"]
+const SORTER_KEYS := ["input_direction", "initial_output_side"]
 const CARGO_KEYS := ["type"]
 const PRODUCER_KEYS := ["facing", "beat_interval", "cargo_type"]
 const RECYCLER_KEYS: Array = []
@@ -19,6 +20,7 @@ const PRESS_MACHINE_KEYS := ["facing", "cargo_type", "beat_interval"]
 const PACKER_KEYS := ["facing"]
 const BELT_FACING_VALUES := ["UP", "RIGHT", "DOWN", "LEFT"]
 const BELT_TURN_MODE_VALUES := ["STRAIGHT", "LEFT", "RIGHT"]
+const SORTER_OUTPUT_SIDE_VALUES := ["LEFT", "RIGHT"]
 const CARGO_TYPE_VALUES := ["CARGO_1", "CARGO_2", "CARGO_3"]
 
 var level_id: String = ""
@@ -134,22 +136,26 @@ static func _parse_cell(raw_cell: Dictionary, index: int, level_width: int, leve
 		return _validation_error(source_label, "duplicate cell coordinates found at (%d, %d)" % [x, y])
 
 	var has_belt: bool = raw_cell.has("belt")
+	var has_sorter: bool = raw_cell.has("sorter")
 	var has_cargo: bool = raw_cell.has("cargo")
 	var has_producer: bool = raw_cell.has("producer")
 	var has_recycler: bool = raw_cell.has("recycler")
 	var has_signal_tower: bool = raw_cell.has("signal_tower")
 	var has_press_machine: bool = raw_cell.has("press_machine")
 	var has_packer: bool = raw_cell.has("packer")
-	if not has_belt and not has_cargo and not has_producer and not has_recycler and not has_signal_tower and not has_press_machine and not has_packer:
+	if not has_belt and not has_sorter and not has_cargo and not has_producer and not has_recycler and not has_signal_tower and not has_press_machine and not has_packer:
 		return _validation_error(source_label, "%s must contain at least one gameplay object" % cell_label)
 
-	if has_signal_tower and (has_belt or has_cargo or has_producer or has_recycler or has_press_machine or has_packer):
+	if has_signal_tower and (has_belt or has_sorter or has_cargo or has_producer or has_recycler or has_press_machine or has_packer):
 		return _validation_error(source_label, "%s.signal_tower must occupy its own cell" % cell_label)
 
-	if has_press_machine and (has_belt or has_producer or has_recycler or has_signal_tower or has_packer):
+	if has_sorter and (has_belt or has_signal_tower or has_press_machine or has_packer):
+		return _validation_error(source_label, "%s.sorter can only share a cell with cargo, producer, or recycler" % cell_label)
+
+	if has_press_machine and (has_belt or has_sorter or has_producer or has_recycler or has_signal_tower or has_packer):
 		return _validation_error(source_label, "%s.press_machine can only share a cell with cargo" % cell_label)
 
-	if has_packer and (has_belt or has_producer or has_recycler or has_signal_tower or has_press_machine):
+	if has_packer and (has_belt or has_sorter or has_producer or has_recycler or has_signal_tower or has_press_machine):
 		return _validation_error(source_label, "%s.packer can only share a cell with cargo" % cell_label)
 
 	var normalized_cell: Dictionary = {
@@ -166,6 +172,16 @@ static func _parse_cell(raw_cell: Dictionary, index: int, level_width: int, leve
 			return null
 
 		normalized_cell["belt"] = normalized_belt
+
+	if has_sorter:
+		if typeof(raw_cell["sorter"]) != TYPE_DICTIONARY:
+			return _validation_error(source_label, "%s.sorter must be an object" % cell_label)
+
+		var normalized_sorter: Variant = _parse_sorter(raw_cell["sorter"], cell_label, source_label)
+		if normalized_sorter == null:
+			return null
+
+		normalized_cell["sorter"] = normalized_sorter
 
 	if has_cargo:
 		if typeof(raw_cell["cargo"]) != TYPE_DICTIONARY:
@@ -262,6 +278,32 @@ static func _parse_belt(raw_belt: Dictionary, cell_label: String, source_label: 
 		"facing": facing,
 		"turn_mode": turn_mode,
 		"beat_interval": beat_interval,
+	}
+
+
+static func _parse_sorter(raw_sorter: Dictionary, cell_label: String, source_label: String) -> Variant:
+	var sorter_label: String = "%s.sorter" % cell_label
+	if not _ensure_allowed_keys(raw_sorter, SORTER_KEYS, sorter_label, source_label):
+		return null
+
+	if not _has_non_empty_string(raw_sorter, "input_direction"):
+		return _validation_error(source_label, "%s.input_direction must be a non-empty string" % sorter_label)
+
+	if not _has_non_empty_string(raw_sorter, "initial_output_side"):
+		return _validation_error(source_label, "%s.initial_output_side must be a non-empty string" % sorter_label)
+
+	var input_direction: String = String(raw_sorter["input_direction"]).strip_edges().to_upper()
+	var initial_output_side: String = String(raw_sorter["initial_output_side"]).strip_edges().to_upper()
+
+	if not BELT_FACING_VALUES.has(input_direction):
+		return _validation_error(source_label, "%s.input_direction must be one of %s" % [sorter_label, BELT_FACING_VALUES])
+
+	if not SORTER_OUTPUT_SIDE_VALUES.has(initial_output_side):
+		return _validation_error(source_label, "%s.initial_output_side must be one of %s" % [sorter_label, SORTER_OUTPUT_SIDE_VALUES])
+
+	return {
+		"input_direction": input_direction,
+		"initial_output_side": initial_output_side,
 	}
 
 
