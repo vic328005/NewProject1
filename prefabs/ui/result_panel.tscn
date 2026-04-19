@@ -54,7 +54,7 @@ horizontal_alignment = 1
 custom_minimum_size = Vector2(0, 72)
 layout_mode = 2
 theme_override_font_sizes/font_size = 20
-text = "已回收 0 / 3\n当前拍数 0 / 60"
+text = "已出货 0 / 3\n当前拍数 0 / 60"
 horizontal_alignment = 1
 vertical_alignment = 1
 

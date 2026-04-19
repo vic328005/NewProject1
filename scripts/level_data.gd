@@ -14,7 +14,7 @@ const BELT_KEYS := ["facing", "turn_mode", "beat_interval"]
 const SORTER_KEYS := ["input_direction", "initial_output_side"]
 const CARGO_KEYS := ["type"]
 const PRODUCER_KEYS := ["facing", "beat_interval", "cargo_type"]
-const RECYCLER_KEYS: Array = []
+const RECYCLER_KEYS := ["cargo_type", "required_count"]
 const SIGNAL_TOWER_KEYS: Array = ["max_steps"]
 const PRESS_MACHINE_KEYS := ["facing", "cargo_type", "beat_interval"]
 const REFINER_KEYS := ["facing"]
@@ -375,7 +375,20 @@ static func _parse_recycler(raw_recycler: Dictionary, cell_label: String, source
 	if not _ensure_allowed_keys(raw_recycler, RECYCLER_KEYS, recycler_label, source_label):
 		return null
 
-	return {}
+	if not _has_non_empty_string(raw_recycler, "cargo_type"):
+		return _validation_error(source_label, "%s.cargo_type must be a non-empty string" % recycler_label)
+
+	if not _has_positive_integer_number(raw_recycler, "required_count"):
+		return _validation_error(source_label, "%s.required_count must be a positive integer" % recycler_label)
+
+	var cargo_type: String = String(raw_recycler["cargo_type"]).strip_edges().to_upper()
+	if not CARGO_TYPE_VALUES.has(cargo_type):
+		return _validation_error(source_label, "%s.cargo_type must be one of %s" % [recycler_label, CARGO_TYPE_VALUES])
+
+	return {
+		"cargo_type": cargo_type,
+		"required_count": int(raw_recycler["required_count"]),
+	}
 
 
 static func _parse_signal_tower(raw_signal_tower: Dictionary, cell_label: String, source_label: String) -> Variant:

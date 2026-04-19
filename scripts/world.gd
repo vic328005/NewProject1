@@ -117,6 +117,48 @@ func apply_level_metadata(level_data: LevelData) -> void:
 	grid_height = level_data.grid_height
 
 
+func get_total_recycler_required_count() -> int:
+	var total_required_count: int = 0
+	var recycler_cells: Dictionary = recycler_layer.get_cells()
+	for cell in recycler_cells.keys():
+		var recycler: Recycler = recycler_cells[cell] as Recycler
+		if recycler == null or not is_instance_valid(recycler):
+			continue
+
+		total_required_count += recycler.required_count
+
+	return total_required_count
+
+
+func get_remaining_recycler_required_count() -> int:
+	var remaining_required_count: int = 0
+	var recycler_cells: Dictionary = recycler_layer.get_cells()
+	for cell in recycler_cells.keys():
+		var recycler: Recycler = recycler_cells[cell] as Recycler
+		if recycler == null or not is_instance_valid(recycler):
+			continue
+
+		remaining_required_count += recycler.get_remaining_count()
+
+	return remaining_required_count
+
+
+func are_all_recyclers_completed() -> bool:
+	var recycler_cells: Dictionary = recycler_layer.get_cells()
+	if recycler_cells.is_empty():
+		return false
+
+	for cell in recycler_cells.keys():
+		var recycler: Recycler = recycler_cells[cell] as Recycler
+		if recycler == null or not is_instance_valid(recycler):
+			continue
+
+		if not recycler.is_completed():
+			return false
+
+	return true
+
+
 func add_level_content(node: Node) -> void:
 	node.add_to_group("runtime_level_content")
 	add_child(node)
@@ -642,6 +684,7 @@ func _is_press_machine_triggered(press_machine: PressMachine, triggered_press_ma
 
 func _resolve_recycler_collection() -> void:
 	var recycler_cells: Dictionary = recycler_layer.get_cells()
+	var did_progress: bool = false
 
 	for cell in recycler_cells.keys():
 		var recycler: Recycler = recycler_cells[cell] as Recycler
@@ -652,8 +695,11 @@ func _resolve_recycler_collection() -> void:
 		if cargo == null or not is_instance_valid(cargo):
 			continue
 
-		GM.register_recycled_cargo(cargo.cargo_type)
-		cargo.remove_from_world()
+		if recycler.collect_cargo(cargo):
+			did_progress = true
+
+	if did_progress and are_all_recyclers_completed():
+		GM.finish_game(true)
 
 
 func _resolve_signals(beat_index: int) -> void:

@@ -121,6 +121,8 @@
         "beat_interval": 2
       },
       "recycler": {
+        "cargo_type": "CARGO_1",
+        "required_count": 3
       }
     },
     {

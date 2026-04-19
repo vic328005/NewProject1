@@ -119,9 +119,11 @@ func _create_producer(cell: Vector2i, producer_data: Dictionary, world: World) -
 	return producer
 
 
-func _create_recycler(cell: Vector2i, _recycler_data: Dictionary, world: World) -> Recycler:
+func _create_recycler(cell: Vector2i, recycler_data: Dictionary, world: World) -> Recycler:
 	var recycler: Recycler = RECYCLER_SCENE.instantiate() as Recycler
 	recycler.position = world.cell_to_world(cell)
+	recycler.cargo_type = String(recycler_data["cargo_type"])
+	recycler.required_count = int(recycler_data["required_count"])
 	return recycler
 
 

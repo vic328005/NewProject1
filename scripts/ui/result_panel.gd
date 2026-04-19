@@ -14,14 +14,14 @@ func _ready() -> void:
 	return_button.pressed.connect(_on_return_button_pressed)
 
 
-func configure(success: bool, recycled_count: int, target_count: int, current_beat: int, beat_limit: int) -> void:
+func configure(success: bool, shipped_count: int, target_count: int, current_beat: int, beat_limit: int) -> void:
 	if success:
 		title_label.text = "游戏成功"
 	else:
 		title_label.text = "游戏失败"
 
-	summary_label.text = "已回收 %d / %d\n当前拍数 %d / %d" % [
-		recycled_count,
+	summary_label.text = "已出货 %d / %d\n当前拍数 %d / %d" % [
+		shipped_count,
 		target_count,
 		current_beat,
 		beat_limit,

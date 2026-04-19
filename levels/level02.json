@@ -53,7 +53,10 @@
     {
       "x": 5,
       "y": 1,
-      "recycler": {}
+      "recycler": {
+        "cargo_type": "CARGO_1",
+        "required_count": 2
+      }
     },
     {
       "x": 0,
@@ -67,7 +70,10 @@
     {
       "x": 1,
       "y": 3,
-      "recycler": {}
+      "recycler": {
+        "cargo_type": "CARGO_2",
+        "required_count": 1
+      }
     }
   ]
 }

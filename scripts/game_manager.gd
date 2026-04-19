@@ -2,7 +2,6 @@ extends Node
 class_name GameManager
 
 const UI_MODULE_SCENE: PackedScene = preload("res://prefabs/ui/ui_module.tscn")
-const TARGET_RECYCLED_COUNT: int = 3
 const FAILURE_BEAT_LIMIT: int = 60
 
 enum GameState {
@@ -20,7 +19,6 @@ var world: World = null
 var ui: UiModule = null
 var level_loader: LevelLoader
 var state: int = GameState.MENU
-var recycled_count: int = 0
 var current_beat: int = 0
 
 
@@ -63,7 +61,11 @@ func start_game() -> void:
 		_show_main_menu()
 		return
 
-	recycled_count = 0
+	if world.get_total_recycler_required_count() <= 0:
+		push_error("Level has no recycler goals: %s" % config.start_level_path)
+		_show_main_menu()
+		return
+
 	current_beat = 0
 	state = GameState.PLAYING
 
@@ -86,7 +88,15 @@ func finish_game(success: bool) -> void:
 
 	var panel: ResultPanel = ui.open(UIDef.result_panel) as ResultPanel
 	assert(panel != null, "Result panel scene root is not a ResultPanel.")
-	panel.configure(success, recycled_count, TARGET_RECYCLED_COUNT, current_beat, FAILURE_BEAT_LIMIT)
+	var total_required_count: int = world.get_total_recycler_required_count()
+	var remaining_required_count: int = world.get_remaining_recycler_required_count()
+	panel.configure(
+		success,
+		total_required_count - remaining_required_count,
+		total_required_count,
+		current_beat,
+		FAILURE_BEAT_LIMIT
+	)
 
 
 func return_to_main_menu() -> void:
@@ -95,18 +105,6 @@ func return_to_main_menu() -> void:
 
 func quit_game() -> void:
 	get_tree().quit()
-
-
-func register_recycled_cargo(_cargo_type: String) -> void:
-	if state != GameState.PLAYING:
-		return
-
-	if is_instance_valid(beats):
-		current_beat = beats.get_current_beat_index()
-
-	recycled_count += 1
-	if recycled_count >= TARGET_RECYCLED_COUNT:
-		finish_game(true)
 
 
 func _init_config() -> void:
@@ -210,7 +208,6 @@ func _clear_session() -> void:
 	if is_instance_valid(world):
 		world.clear_level_content()
 
-	recycled_count = 0
 	current_beat = 0
 
 
