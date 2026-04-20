@@ -34,6 +34,24 @@ enum MachineState {
 		_update_animation()
 		queue_redraw()
 
+@export var sprite_tint_a: Color = Color(0.96, 0.89, 0.72, 1.0):
+	set(value):
+		sprite_tint_a = value
+		_sync_visual_state()
+		queue_redraw()
+
+@export var sprite_tint_b: Color = Color(0.64, 0.92, 0.73, 1.0):
+	set(value):
+		sprite_tint_b = value
+		_sync_visual_state()
+		queue_redraw()
+
+@export var sprite_tint_c: Color = Color(0.62, 0.56, 0.98, 1.0):
+	set(value):
+		sprite_tint_c = value
+		_sync_visual_state()
+		queue_redraw()
+
 @export_range(1, 2, 1) var beat_interval: int = DEFAULT_BEAT_INTERVAL:
 	set(value):
 		beat_interval = clampi(value, 1, 2)
@@ -179,6 +197,8 @@ func _sync_visual_state() -> void:
 
 	if animated_sprite.animation != target_animation:
 		animated_sprite.animation = target_animation
+
+	animated_sprite.modulate = _get_sprite_tint_color()
 
 
 func _get_animation_name(state: AnimationState) -> StringName:
@@ -345,11 +365,15 @@ func _direction_to_vector(direction: Direction.Value) -> Vector2:
 func _get_shape_color() -> Color:
 	match cargo_type:
 		CargoType.B:
-			return Color(0.64, 0.92, 0.73, 1.0)
+			return sprite_tint_b
 		CargoType.C:
-			return Color(0.62, 0.56, 0.98, 1.0)
+			return sprite_tint_c
 		_:
-			return Color(0.96, 0.89, 0.72, 1.0)
+			return sprite_tint_a
+
+
+func _get_sprite_tint_color() -> Color:
+	return _get_shape_color()
 
 
 func _is_triggered_on_beat(beat_index: int, receives_signal: bool) -> bool:

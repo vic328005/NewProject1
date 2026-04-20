@@ -1,6 +1,7 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://bbbg2xpi05wpn"]
 
-[ext_resource type="Script" path="res://scripts/signal_wave.gd" id="1_signal"]
+[ext_resource type="Script" uid="uid://bo6cpj3cvkmdw" path="res://scripts/signal_wave.gd" id="1_signal"]
 
-[node name="SignalWave" type="Node2D"]
+[node name="SignalWave" type="Node2D" unique_id=2082511674]
+z_index = 10
 script = ExtResource("1_signal")

@@ -1,7 +1,6 @@
 [gd_scene format=3 uid="uid://b5aym3s6y6ft3"]
 
 [ext_resource type="Script" uid="uid://bo2qy0e5gecmh" path="res://scripts/press_machine.gd" id="1_press_machine"]
-[ext_resource type="Texture2D" uid="uid://bdqssc4d1e4xf" path="res://assets/images/animations/press/press_1_1.png" id="2_qcsga"]
 [ext_resource type="Texture2D" uid="uid://dpr6nwyto08b4" path="res://assets/images/animations/press/press_1_2.png" id="3_1vald"]
 [ext_resource type="Texture2D" uid="uid://d0044vicat8lq" path="res://assets/images/animations/press/press_1_3.png" id="4_t4mhj"]
 [ext_resource type="Texture2D" uid="uid://bpu18e0fcits6" path="res://assets/images/animations/press/press_1_4.png" id="5_ft5iy"]
@@ -15,7 +14,6 @@
 [ext_resource type="Texture2D" uid="uid://cerl4j2h1i14o" path="res://assets/images/animations/press/press_1_12.png" id="13_8oqk0"]
 [ext_resource type="Texture2D" uid="uid://bvi22k0usi5hk" path="res://assets/images/animations/press/press_1_13.png" id="14_feqgg"]
 [ext_resource type="Texture2D" uid="uid://dhprg0sjsqxr0" path="res://assets/images/animations/press/press_1_14.png" id="15_aqvpg"]
-[ext_resource type="Texture2D" uid="uid://32nrjarhytet" path="res://assets/images/animations/press/press_2_1.png" id="16_2hle7"]
 [ext_resource type="Texture2D" uid="uid://c0cwhoc6c3d83" path="res://assets/images/animations/press/press_2_2.png" id="17_6q0h2"]
 [ext_resource type="Texture2D" uid="uid://c7g2ka2gfw5p7" path="res://assets/images/animations/press/press_2_3.png" id="18_a01or"]
 [ext_resource type="Texture2D" uid="uid://c4su7l4u3262c" path="res://assets/images/animations/press/press_2_4.png" id="19_dvq7j"]
@@ -29,7 +27,6 @@
 [ext_resource type="Texture2D" uid="uid://jogbpywkppf1" path="res://assets/images/animations/press/press_2_12.png" id="27_wmp2i"]
 [ext_resource type="Texture2D" uid="uid://bi15o56cg2sqo" path="res://assets/images/animations/press/press_2_13.png" id="28_35k8e"]
 [ext_resource type="Texture2D" uid="uid://bsq17s8xgooyw" path="res://assets/images/animations/press/press_2_14.png" id="29_5hxtr"]
-[ext_resource type="Texture2D" uid="uid://dwi7uvbxj8yie" path="res://assets/images/animations/press/press_3_1.png" id="30_ow3il"]
 [ext_resource type="Texture2D" uid="uid://d2nkr3jr3c7dr" path="res://assets/images/animations/press/press_3_2.png" id="31_8xoqe"]
 [ext_resource type="Texture2D" uid="uid://3y0mhn8q27wg" path="res://assets/images/animations/press/press_3_3.png" id="32_iuunm"]
 [ext_resource type="Texture2D" uid="uid://3inqirejgxbe" path="res://assets/images/animations/press/press_3_4.png" id="33_f2yqr"]
@@ -47,9 +44,6 @@
 [sub_resource type="SpriteFrames" id="SpriteFrames_2oyq7"]
 animations = [{
 "frames": [{
-"duration": 1.0,
-"texture": ExtResource("2_qcsga")
-}, {
 "duration": 1.0,
 "texture": ExtResource("3_1vald")
 }, {
@@ -95,9 +89,6 @@ animations = [{
 }, {
 "frames": [{
 "duration": 1.0,
-"texture": ExtResource("16_2hle7")
-}, {
-"duration": 1.0,
 "texture": ExtResource("17_6q0h2")
 }, {
 "duration": 1.0,
@@ -141,9 +132,6 @@ animations = [{
 "speed": 5.0
 }, {
 "frames": [{
-"duration": 1.0,
-"texture": ExtResource("30_ow3il")
-}, {
 "duration": 1.0,
 "texture": ExtResource("31_8xoqe")
 }, {
@@ -189,10 +177,14 @@ animations = [{
 }]
 
 [node name="PressMachine" type="Node2D" unique_id=502216469]
+z_index = 2
 script = ExtResource("1_press_machine")
+sprite_tint_a = Color(0.7939381, 0.8741278, 0.99999946, 1)
+sprite_tint_b = Color(0.69272935, 0.96168774, 0.852182, 1)
+sprite_tint_c = Color(0.9967894, 0.80043036, 0.7660407, 1)
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="." unique_id=624007677]
-modulate = Color(0.94, 0.82, 0.3, 1)
+z_index = 1
 position = Vector2(32, 32)
 sprite_frames = SubResource("SpriteFrames_2oyq7")
-animation = &"A"
+animation = &"C"
