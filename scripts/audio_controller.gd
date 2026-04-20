@@ -2,6 +2,7 @@ extends Node2D
 class_name AudioController
 
 const SFX_SIGNAL_TOWER_FIRE: StringName = &"signal_tower_fire"
+const SFX_RECYCLER_SUCCESS: StringName = &"recycler_success"
 const SFX_RECYCLER_DESTROY: StringName = &"recycler_destroy"
 const SFX_PRESS_MACHINE_COMPRESS: StringName = &"press_machine_compress"
 const SFX_PACKER_PACK: StringName = &"packer_pack"
@@ -15,6 +16,7 @@ const SFX_MENU_EXIT: StringName = &"menu_exit"
 const STREAM_MENU_BGM: AudioStream = preload("res://assets/audios/menu_bgm.wav")
 const STREAM_GAME_BGM: AudioStream = preload("res://assets/audios/4.18.ogg")
 const STREAM_SIGNAL_TOWER_FIRE: AudioStream = preload("res://assets/audios/signal_tower_fire.wav")
+const STREAM_RECYCLER_SUCCESS: AudioStream = preload("res://assets/audios/recycler_success.wav")
 const STREAM_RECYCLER_DESTROY: AudioStream = preload("res://assets/audios/recycler_destroy.wav")
 const STREAM_PRESS_MACHINE_COMPRESS: AudioStream = preload("res://assets/audios/press_machine_compress.wav")
 const STREAM_PACKER_PACK: AudioStream = preload("res://assets/audios/packer_pack.wav")
@@ -29,6 +31,7 @@ const STREAM_MENU_EXIT: AudioStream = preload("res://assets/audios/exit.wav")
 
 var _sfx_streams: Dictionary = {
 	SFX_SIGNAL_TOWER_FIRE: STREAM_SIGNAL_TOWER_FIRE,
+	SFX_RECYCLER_SUCCESS: STREAM_RECYCLER_SUCCESS,
 	SFX_RECYCLER_DESTROY: STREAM_RECYCLER_DESTROY,
 	SFX_PRESS_MACHINE_COMPRESS: STREAM_PRESS_MACHINE_COMPRESS,
 	SFX_PACKER_PACK: STREAM_PACKER_PACK,

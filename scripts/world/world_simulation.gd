@@ -417,7 +417,10 @@ func _commit_inputs(input_results: Dictionary, beat_index: int) -> void:
 
 			_apply_input_plan(machine, plan, item, beat_index)
 			if machine is Recycler:
-				_play_sfx(AudioController.SFX_RECYCLER_DESTROY)
+				var recycler_sfx: StringName = AudioController.SFX_RECYCLER_DESTROY
+				if bool(plan.get("counts_as_goal", false)):
+					recycler_sfx = AudioController.SFX_RECYCLER_SUCCESS
+				_play_sfx(recycler_sfx)
 			if is_instance_valid(item):
 				item.mark_resolved_on_beat(beat_index)
 				item.remove_from_world()
