@@ -77,6 +77,8 @@ func _on_metronome_hit(payload: Variant) -> void:
 	var beat_index: int = int(event_payload["beat_index"])
 	var signal_wave: SignalWave = create_signal_wave(beat_index)
 	_world.add_level_content(signal_wave)
+	# 信号波创建后立刻生效，避免再维护“待激活”状态。
+	signal_wave.activate_in_signal_layer()
 
 
 func _register_to_signal_tower_layer() -> void:

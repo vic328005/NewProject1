@@ -7,6 +7,8 @@ const WAVE_FILL_COLOR: Color = Color(0.30, 0.69, 0.35, 0.38)
 const WAVE_BORDER_COLOR: Color = Color(0.18, 0.41, 0.20, 0.9)
 # 默认最大传播拍数。
 const DEFAULT_MAX_STEPS: int = 10
+# 信号波统一注册到场景树分组，便于结算阶段快速收集。
+const GROUP_NAME: StringName = &"signal_waves"
 
 # 最大传播半径，运行时始终保证至少为 1。
 var max_steps: int = DEFAULT_MAX_STEPS:
@@ -47,6 +49,10 @@ func setup(world: World, origin_cell: Vector2i, signal_max_steps: int, current_b
 	# 如果第一圈都没有有效格子，直接视为结束。
 	_is_finished = _wave_cells.is_empty()
 	queue_redraw()
+
+
+func _enter_tree() -> void:
+	add_to_group(GROUP_NAME)
 
 
 func _exit_tree() -> void:
@@ -206,9 +212,9 @@ func _find_covering_signal_wave(cell: Vector2i) -> SignalWave:
 	if _world == null:
 		return null
 
-	# 在世界子节点里查找其他仍活跃的信号波，用于恢复重叠覆盖。
-	for child in _world.get_children():
-		var signal_wave: SignalWave = child as SignalWave
+	# 通过专用分组查找其他仍活跃的信号波，避免扫描世界全部子节点。
+	for node in _world.get_tree().get_nodes_in_group(GROUP_NAME):
+		var signal_wave: SignalWave = node as SignalWave
 		if signal_wave == null or signal_wave == self:
 			continue
 

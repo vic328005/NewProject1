@@ -156,8 +156,7 @@ func get_item(cell: Vector2i) -> Item:
 
 # 拍点触发时执行完整结算流程。
 func _on_beat_fired(beat_index: int, _beat_time: float) -> void:
-	var signal_snapshot: Dictionary = _resolve_signal_phase(beat_index)
-	_simulation.resolve_beat(beat_index, signal_snapshot)
+	_simulation.resolve_beat(beat_index)
 
 
 # 初始化所有运行时图层，后续关卡切换只清内容不重建结构。
@@ -198,58 +197,6 @@ func _clear_runtime_level_content() -> void:
 func _clear_runtime_state() -> void:
 	level_id = ""
 	display_name = ""
-
-
-# 先推进旧信号波，再合入本拍新发射的信号波，并产出当前拍唯一的信号快照。
-func _resolve_signal_phase(beat_index: int) -> Dictionary:
-	var active_signal_waves: Array[SignalWave] = []
-	var pending_signal_waves: Array[SignalWave] = []
-
-	for child in get_children():
-		var signal_wave: SignalWave = child as SignalWave
-		if signal_wave == null:
-			continue
-
-		if signal_wave.is_active_in_signal_layer():
-			active_signal_waves.append(signal_wave)
-		else:
-			pending_signal_waves.append(signal_wave)
-
-	for signal_wave in active_signal_waves:
-		signal_wave.advance(beat_index)
-
-	for signal_wave in active_signal_waves:
-		if signal_wave.is_finished():
-			signal_wave.remove_from_world()
-
-	for signal_wave in pending_signal_waves:
-		if signal_wave.is_finished():
-			signal_wave.remove_from_world()
-			continue
-
-		signal_wave.activate_in_signal_layer()
-
-	return _build_signal_snapshot()
-
-
-# 把当前 signal_layer 覆盖转换成结算阶段直接可用的机器触发快照。
-func _build_signal_snapshot() -> Dictionary:
-	var triggered_press_machines: Dictionary = {}
-	var triggered_packers: Dictionary = {}
-	var signal_cells: Dictionary = signal_layer.get_cells()
-
-	for cell in signal_cells.keys():
-		if press_machine_layer.has_cell(cell):
-			triggered_press_machines[cell] = true
-
-		if packer_layer.has_cell(cell):
-			triggered_packers[cell] = true
-
-	return {
-		WorldSimulation.TRIGGERED_PRESS_MACHINES_KEY: triggered_press_machines,
-		WorldSimulation.TRIGGERED_PACKERS_KEY: triggered_packers,
-	}
-
 
 # 创建并挂载环境实例，用于承载非玩法实体。
 func _init_environment() -> void:

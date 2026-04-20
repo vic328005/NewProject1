@@ -103,13 +103,10 @@ func _unhandled_key_input(event: InputEvent) -> void:
 
 	_resolved_beat_index = beat_index
 
-	var beat_progress: float = _beats.get_beat_progress()
-	# 命中时通过事件总线广播当前拍点，让所有信号塔自行决定如何响应。
-	if _is_hit_timing(beat_progress):
-		_emit_metronome_hit(beat_index)
-		_trigger_feedback(FeedbackState.HIT)
-	else:
-		_trigger_feedback(FeedbackState.MISS)
+	# 临时补丁：先不处理当前节拍手感问题，改为空格按下就直接发事件。
+	# 同时继续保留“一拍只响应一次”的限制，后续再回到精确时机判定。
+	_emit_metronome_hit(beat_index)
+	_trigger_feedback(FeedbackState.HIT)
 
 	# 当前输入已经被节拍面板消费，不再继续传递。
 	get_viewport().set_input_as_handled()
