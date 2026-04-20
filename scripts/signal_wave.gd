@@ -3,6 +3,9 @@ class_name SignalWave
 
 # 默认最大传播拍数。
 const DEFAULT_MAX_STEPS: int = 10
+# 波前扩张占一个拍子的比例。
+# 参考 Item 的移动时长压缩，让信号波收得更利落。
+const RENDER_DURATION_RATIO: float = 0.4
 # 信号波统一注册到场景树分组，便于结算阶段快速收集。
 const GROUP_NAME: StringName = &"signal_waves"
 const LINE_TEXTURE: Texture2D = preload("res://assets/images/signal_wave_line.png")
@@ -19,6 +22,9 @@ var _world: World
 var _origin_cell: Vector2i
 # 当前波面半径，表示已经扩张到第几圈。
 var _wave_radius: int = 0
+# 当前这拍插值开始前的逻辑半径。
+# 只用于表现层，不能参与 signal_layer 判定。
+var _previous_wave_radius: int = 0
 # 上一次推进时记录的拍点，用来避免同一拍重复推进。
 var _last_wave_beat_index: int = -1
 # 标记信号波是否已经结束。
@@ -41,6 +47,7 @@ func setup(world: World, origin_cell: Vector2i, signal_max_steps: int, current_b
 	# 节点位置固定在发射原点格子，绘制时再根据相对偏移展开。
 	position = _world.cell_to_world(_origin_cell)
 	# 创建后立即进入第一圈波面，因此初始半径为 1。
+	_previous_wave_radius = 0
 	_wave_radius = 1
 	_last_wave_beat_index = current_beat_index
 	_wave_cells = _build_wave_cells(_wave_radius)
@@ -51,11 +58,22 @@ func setup(world: World, origin_cell: Vector2i, signal_max_steps: int, current_b
 
 func _enter_tree() -> void:
 	add_to_group(GROUP_NAME)
+	set_process(not _is_finished)
 
 
 func _exit_tree() -> void:
 	# 离开场景树时清理自己在 signal_layer 里的占位，避免残留失效引用。
 	_clear_signal_layer_occupancy()
+	set_process(false)
+
+
+func _process(_delta: float) -> void:
+	if _is_finished:
+		set_process(false)
+		return
+
+	# 表现层每帧重绘，逻辑推进仍然只由拍点驱动。
+	queue_redraw()
 
 
 func activate_in_signal_layer() -> void:
@@ -88,6 +106,7 @@ func advance(current_beat_index: int) -> void:
 	_last_wave_beat_index = current_beat_index
 
 	# 先更新半径，再重建整圈波面格子。
+	_previous_wave_radius = _wave_radius
 	_wave_radius = next_wave_radius
 	_wave_cells = _build_wave_cells(_wave_radius)
 	if _is_active_in_signal_layer:
@@ -121,14 +140,17 @@ func _draw() -> void:
 		return
 
 	var cell_size: float = float(_world.main_layer.cell_size)
+	var render_scale: float = _get_render_scale()
+	if render_scale <= 0.0:
+		return
 
 	for cell in _wave_cells:
 		if cell == _origin_cell:
 			continue
 
 		# 节点原点已经放在发射格，绘制时只需要计算相对偏移。
-		var cell_origin: Vector2 = _cell_to_local_origin(cell, cell_size)
-		_draw_wave_cell(cell, cell_origin)
+		var cell_origin: Vector2 = _cell_to_local_origin(cell, cell_size) * render_scale
+		_draw_wave_cell(cell, cell_origin, render_scale)
 
 
 func _build_wave_cells(radius: int) -> Array[Vector2i]:
@@ -170,6 +192,7 @@ func _finish_wave() -> void:
 	# 结束后先停止参与图层覆盖，再清理占位和绘制缓存。
 	_is_finished = true
 	_is_active_in_signal_layer = false
+	set_process(false)
 	_clear_signal_layer_occupancy()
 	_wave_cells.clear()
 	queue_redraw()
@@ -231,19 +254,20 @@ func _cell_to_local_origin(cell: Vector2i, cell_size: float) -> Vector2:
 	return Vector2(float(offset.x) * cell_size, float(offset.y) * cell_size)
 
 
-func _draw_wave_cell(cell: Vector2i, cell_origin: Vector2) -> void:
+func _draw_wave_cell(cell: Vector2i, cell_origin: Vector2, render_scale: float) -> void:
 	var directions: Array[Vector2i] = _get_neighbor_directions(cell)
 	if directions.size() < 2:
 		return
 
 	if _is_corner_directions(directions):
-		_draw_corner_texture(cell_origin, directions)
+		_draw_corner_texture(cell_origin, directions, render_scale)
 		return
 
 	_draw_rotated_texture(
 		LINE_TEXTURE,
 		cell_origin,
-		_get_line_rotation(directions)
+		_get_line_rotation(directions),
+		render_scale
 	)
 
 
@@ -277,11 +301,11 @@ func _is_corner_directions(directions: Array[Vector2i]) -> bool:
 	return first_direction.x != second_direction.x and first_direction.y != second_direction.y
 
 
-func _draw_corner_texture(cell_origin: Vector2, directions: Array[Vector2i]) -> void:
+func _draw_corner_texture(cell_origin: Vector2, directions: Array[Vector2i], render_scale: float) -> void:
 	var has_left: bool = directions.has(Vector2i.LEFT)
 	var has_up: bool = directions.has(Vector2i.UP)
-	var scale_x: float = 1.0 if has_left else -1.0
-	var scale_y: float = -1.0 if has_up else 1.0
+	var scale_x: float = render_scale if has_left else -render_scale
+	var scale_y: float = -render_scale if has_up else render_scale
 	_draw_transformed_texture(CONER_TEXTURE, cell_origin, 0.0, Vector2(scale_x, scale_y))
 
 
@@ -292,8 +316,33 @@ func _get_line_rotation(directions: Array[Vector2i]) -> float:
 	return PI / 2.0
 
 
-func _draw_rotated_texture(texture: Texture2D, cell_origin: Vector2, rotation: float) -> void:
-	_draw_transformed_texture(texture, cell_origin, rotation, Vector2.ONE)
+func _draw_rotated_texture(texture: Texture2D, cell_origin: Vector2, rotation: float, render_scale: float) -> void:
+	_draw_transformed_texture(texture, cell_origin, rotation, Vector2.ONE * render_scale)
+
+
+func _get_render_scale() -> float:
+	if _wave_radius <= 0:
+		return 1.0
+
+	var current_radius: float = float(_wave_radius)
+	var previous_radius: float = float(_previous_wave_radius)
+	var render_radius: float = lerpf(previous_radius, current_radius, _get_beat_render_progress())
+	return clampf(render_radius / current_radius, 0.0, 1.0)
+
+
+func _get_beat_render_progress() -> float:
+	if GM == null or not is_instance_valid(GM.beats):
+		# 没有节拍器时直接显示当前整圈，避免影响静态判读。
+		return 1.0
+
+	if not GM.beats.is_running():
+		return 1.0
+
+	if RENDER_DURATION_RATIO <= 0.0:
+		return 1.0
+
+	# 只用拍内前一段时间完成扩张，剩余时间保持结果。
+	return clampf(GM.beats.get_beat_progress() / RENDER_DURATION_RATIO, 0.0, 1.0)
 
 
 func _draw_transformed_texture(texture: Texture2D, cell_origin: Vector2, rotation: float, scale: Vector2) -> void:
