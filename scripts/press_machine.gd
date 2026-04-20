@@ -1,5 +1,5 @@
 @tool
-extends Node2D
+extends Machine
 class_name PressMachine
 
 const PREVIEW_CELL_SIZE: float = 64.0
@@ -29,9 +29,6 @@ const SHAPE_COLOR_3: Color = Color(0.62, 0.56, 0.98, 1.0)
 		_update_sprite_visual()
 		queue_redraw()
 
-var _world: World
-var _registered_cell: Vector2i
-var _is_registered_to_layer: bool = false
 var _pressed_item: Item
 var _press_start_beat: int = -1
 var _is_pressing: bool = false
@@ -42,23 +39,11 @@ var _sprite: Sprite2D
 func _ready() -> void:
 	_update_sprite_visual()
 	queue_redraw()
-
-	if Engine.is_editor_hint():
-		return
-
-	_world = GM.world
-	_register_to_press_machine_layer()
+	super._ready()
 
 
 func _exit_tree() -> void:
-	if Engine.is_editor_hint():
-		return
-
-	_unregister_from_press_machine_layer()
-
-
-func get_registered_cell() -> Vector2i:
-	return _registered_cell
+	super._exit_tree()
 
 
 func get_target_cell() -> Vector2i:
@@ -69,86 +54,80 @@ func should_trigger_on_beat(beat_index: int) -> bool:
 	return beat_index > 0 and beat_index % beat_interval == 0
 
 
-func is_pressing() -> bool:
-	if _has_invalid_pressed_item():
-		clear_pressed_item()
-
-	return _is_pressing
-
-
-func get_pressed_item() -> Item:
-	if not _has_valid_pressed_item():
-		return null
-
-	return _pressed_item
-
-
-func has_finished_press(current_beat_index: int) -> bool:
-	_refresh_output_state(current_beat_index)
-	return _has_valid_pressed_item() and not _is_pressing and _output_ready_beat >= 0
-
-
-func has_pending_output() -> bool:
-	return _has_valid_pressed_item() and _output_ready_beat >= 0
-
-
-func can_output_on_beat(beat_index: int) -> bool:
+func output(beat_index: int) -> Dictionary:
 	_refresh_output_state(beat_index)
-	return has_pending_output() and not _is_pressing and beat_index >= _output_ready_beat
+	if not _has_valid_pressed_item():
+		return {
+			"action": "none",
+		}
+
+	if _is_pressing or _output_ready_beat < 0 or beat_index < _output_ready_beat:
+		return {
+			"action": "none",
+		}
+
+	return {
+		"action": "release",
+		"target_cell": get_target_cell(),
+		"item": _pressed_item,
+		"on_success": Callable(self, "clear_pressed_item"),
+	}
 
 
-func can_accept_input(is_triggered: bool) -> bool:
-	return is_triggered and not _has_valid_pressed_item()
+func input(item: Item, beat_index: int) -> String:
+	if item == null or not is_instance_valid(item):
+		return "reject"
 
+	if not item.is_cargo():
+		return "reject"
 
-func accept_input(item: Item) -> void:
-	assert(item != null and is_instance_valid(item), "PressMachine requires a valid Item to accept input.")
-	assert(item.is_cargo(), "PressMachine can only accept cargo items.")
-	assert(not _has_valid_pressed_item(), "PressMachine cannot accept input while occupied.")
+	if not _is_triggered_on_beat(beat_index):
+		return "reject"
+
+	if _has_valid_pressed_item():
+		return "reject"
+
 	item.store_in_machine(global_position)
 	_pressed_item = item
 	_press_start_beat = -1
 	_output_ready_beat = -1
 	_is_pressing = false
+	return "accept"
 
 
-func can_start_cycle(beat_index: int, is_triggered: bool) -> bool:
-	_refresh_output_state(beat_index)
-	return is_triggered and _has_valid_pressed_item() and not _is_pressing and _output_ready_beat < 0
-
-
-func release_output(target_cell: Vector2i) -> Item:
-	if not _has_valid_pressed_item():
-		return null
-
-	var item: Item = _pressed_item
-	if not item.deploy_from_machine(target_cell):
-		return null
-
-	clear_pressed_item()
-	return item
-
-
-func allows_pass_through(item: Item, is_triggered: bool, beat_index: int) -> bool:
+func transport(item: Item, beat_index: int) -> Dictionary:
 	_refresh_output_state(beat_index)
 	if _has_valid_pressed_item():
-		return false
+		return {
+			"action": "block",
+		}
 
-	if item.is_cargo() and is_triggered:
-		return false
+	if item.is_cargo() and _is_triggered_on_beat(beat_index):
+		return {
+			"action": "block",
+		}
 
-	return true
+	return {
+		"action": "move",
+		"target_cell": get_target_cell(),
+	}
 
 
-func begin_press(item: Item, beat_index: int) -> void:
-	assert(item != null and is_instance_valid(item), "PressMachine requires a valid Item to start pressing.")
-	assert(item.is_cargo(), "PressMachine can only press cargo items.")
-	assert(_pressed_item == item, "PressMachine can only start pressing its held Item.")
-	assert(not _is_pressing, "PressMachine cannot start pressing while busy.")
-	_pressed_item = item
+func start(beat_index: int) -> void:
+	_refresh_output_state(beat_index)
+	if not _is_triggered_on_beat(beat_index):
+		return
+
+	if not _has_valid_pressed_item():
+		return
+
+	if _is_pressing or _output_ready_beat >= 0:
+		return
+
 	_press_start_beat = beat_index
 	_output_ready_beat = beat_index + 1
 	_is_pressing = true
+	_pressed_item.item_type = cargo_type
 
 
 func clear_pressed_item() -> void:
@@ -156,6 +135,10 @@ func clear_pressed_item() -> void:
 	_press_start_beat = -1
 	_output_ready_beat = -1
 	_is_pressing = false
+
+
+func _should_register_to_machine_layer() -> bool:
+	return not Engine.is_editor_hint()
 
 
 func _has_valid_pressed_item() -> bool:
@@ -176,26 +159,6 @@ func _refresh_output_state(beat_index: int) -> void:
 
 	if _is_pressing and _output_ready_beat >= 0 and beat_index >= _output_ready_beat:
 		_is_pressing = false
-
-
-func _register_to_press_machine_layer() -> void:
-	if _world == null:
-		return
-
-	_registered_cell = _world.world_to_cell(_world.to_local(global_position))
-	_world.press_machine_layer.set_cell(_registered_cell, self)
-	global_position = _world.to_global(_world.cell_to_world(_registered_cell))
-	_is_registered_to_layer = true
-
-
-func _unregister_from_press_machine_layer() -> void:
-	if not _is_registered_to_layer or _world == null:
-		return
-
-	if _world.press_machine_layer.get_cell(_registered_cell) == self:
-		_world.press_machine_layer.erase_cell(_registered_cell)
-
-	_is_registered_to_layer = false
 
 
 func _update_sprite_visual() -> void:
@@ -272,3 +235,13 @@ func _get_shape_color() -> Color:
 			return SHAPE_COLOR_3
 		_:
 			return SHAPE_COLOR_1
+
+
+func _is_triggered_on_beat(beat_index: int) -> bool:
+	if _world == null:
+		return false
+
+	if not _world.signal_layer.has_cell(_registered_cell):
+		return false
+
+	return should_trigger_on_beat(beat_index)

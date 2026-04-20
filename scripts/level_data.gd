@@ -126,17 +126,25 @@ static func _parse_cell(raw_cell: Dictionary, index: int, seen_cells: Dictionary
 	var has_signal_tower: bool = raw_cell.has("signal_tower")
 	var has_press_machine: bool = raw_cell.has("press_machine")
 	var has_packer: bool = raw_cell.has("packer")
+	var machine_count: int = 0
+	if has_belt:
+		machine_count += 1
+	if has_producer:
+		machine_count += 1
+	if has_recycler:
+		machine_count += 1
+	if has_press_machine:
+		machine_count += 1
+	if has_packer:
+		machine_count += 1
 	if not has_belt and not has_item and not has_producer and not has_recycler and not has_signal_tower and not has_press_machine and not has_packer:
 		return _validation_error(source_label, "%s must contain at least one gameplay object" % cell_label)
 
 	if has_signal_tower and (has_belt or has_item or has_producer or has_recycler or has_press_machine or has_packer):
 		return _validation_error(source_label, "%s.signal_tower must occupy its own cell" % cell_label)
 
-	if has_press_machine and (has_belt or has_producer or has_recycler or has_signal_tower or has_packer):
-		return _validation_error(source_label, "%s.press_machine can only share a cell with item" % cell_label)
-
-	if has_packer and (has_belt or has_producer or has_recycler or has_signal_tower or has_press_machine):
-		return _validation_error(source_label, "%s.packer can only share a cell with item" % cell_label)
+	if machine_count > 1:
+		return _validation_error(source_label, "%s can contain at most one machine" % cell_label)
 
 	var normalized_cell: Dictionary = {
 		"x": x,

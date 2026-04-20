@@ -1,4 +1,4 @@
-extends Node2D
+extends Machine
 class_name Recycler
 
 signal goal_completed(state: Dictionary)
@@ -16,9 +16,6 @@ const COMPLETE_RING_COLOR: Color = Color(1.0, 0.93, 0.61, 1.0)
 		_rebuild_target_states()
 		_update_visual_state()
 
-var _world: World
-var _registered_cell: Vector2i
-var _is_registered_to_layer: bool = false
 var _target_states: Array[Dictionary] = []
 var _has_emitted_goal_completed: bool = false
 var _font: Font
@@ -26,18 +23,13 @@ var _font: Font
 
 
 func _ready() -> void:
-	_world = GM.world
-	_register_to_recycler_layer()
+	super._ready()
 	_rebuild_target_states()
 	_update_visual_state()
 
 
 func _exit_tree() -> void:
-	_unregister_from_recycler_layer()
-
-
-func get_registered_cell() -> Vector2i:
-	return _registered_cell
+	super._exit_tree()
 
 
 func is_completed() -> bool:
@@ -92,6 +84,37 @@ func log_cargo_destroyed(cargo_type: String) -> void:
 	_log_status("destroy_cargo", CargoType.normalize(cargo_type))
 
 
+func output(_beat_index: int) -> Dictionary:
+	return {
+		"action": "none",
+	}
+
+
+func input(item: Item, _beat_index: int) -> String:
+	if item == null or not is_instance_valid(item):
+		return "reject"
+
+	if item.is_product() and can_accept_product(item.item_type):
+		collect_product(item)
+		return "destroy"
+
+	if item.is_cargo():
+		log_cargo_destroyed(item.item_type)
+
+	item.remove_from_world()
+	return "destroy"
+
+
+func transport(_item: Item, _beat_index: int) -> Dictionary:
+	return {
+		"action": "block",
+	}
+
+
+func start(_beat_index: int) -> void:
+	pass
+
+
 func get_total_required_count() -> int:
 	var total_required_count: int = 0
 	for target_status in _get_effective_target_states():
@@ -120,26 +143,6 @@ func get_status_snapshot() -> Dictionary:
 		"remaining_total_count": get_remaining_total_count(),
 		"targets": get_target_statuses(),
 	}
-
-
-func _register_to_recycler_layer() -> void:
-	if _world == null:
-		return
-
-	_registered_cell = _world.world_to_cell(_world.to_local(global_position))
-	_world.recycler_layer.set_cell(_registered_cell, self)
-	global_position = _world.to_global(_world.cell_to_world(_registered_cell))
-	_is_registered_to_layer = true
-
-
-func _unregister_from_recycler_layer() -> void:
-	if not _is_registered_to_layer or _world == null:
-		return
-
-	if _world.recycler_layer.get_cell(_registered_cell) == self:
-		_world.recycler_layer.erase_cell(_registered_cell)
-
-	_is_registered_to_layer = false
 
 
 func _update_visual_state() -> void:

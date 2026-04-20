@@ -10,20 +10,12 @@ const ENVIRONMENT_SCENE: PackedScene = preload("res://prefabs/environment.tscn")
 var main_layer: MapLayer
 # 运输物层：记录所有 item 实例的占用与移动。
 var item_layer: MapLayer
-# 传送带层：处理有序运输设备的每拍行为。
-var belt_layer: MapLayer
-# 生产机层：记录生成原料的设备。
-var producer_layer: MapLayer
+# 机器层：记录所有会参与拍点结算的 machine。
+var machine_layer: MapLayer
 # 信号层：记录本拍信号覆盖，供后续阶段读取判断。
 var signal_layer: MapLayer
-# 回收机层：记录回收目标与进度。
-var recycler_layer: MapLayer
 # 信号塔层：记录可发射信号波的塔。
 var signal_tower_layer: MapLayer
-# 冲压机层：记录会压制/输出货物的机器。
-var press_machine_layer: MapLayer
-# 打包机层：记录会将货物推进行走位移的打包设备。
-var packer_layer: MapLayer
 # 世界环境节点，用于承载背景和装饰内容。
 var environment: Node2D
 # 当前关卡唯一标识。
@@ -93,10 +85,7 @@ func apply_level_metadata(level_data: LevelData) -> void:
 # 统计当前关卡所有回收机的目标回收总量。
 func get_total_recycler_required_count() -> int:
 	var total_required_count: int = 0
-	var recycler_cells: Dictionary = recycler_layer.get_cells()
-	for cell in recycler_cells.keys():
-		var recycler: Recycler = recycler_cells[cell] as Recycler
-		assert(recycler != null and is_instance_valid(recycler), "recycler_layer contains an invalid Recycler at %s." % [cell])
+	for recycler in _get_recyclers():
 		total_required_count += recycler.get_total_required_count()
 
 	return total_required_count
@@ -105,11 +94,7 @@ func get_total_recycler_required_count() -> int:
 # 统计回收机当前剩余需求总量，用于显示剩余目标。
 func get_remaining_recycler_required_count() -> int:
 	var remaining_required_count: int = 0
-	var recycler_cells: Dictionary = recycler_layer.get_cells()
-	for cell in recycler_cells.keys():
-		var recycler: Recycler = recycler_cells[cell] as Recycler
-		assert(recycler != null and is_instance_valid(recycler), "recycler_layer contains an invalid Recycler at %s." % [cell])
-
+	for recycler in _get_recyclers():
 		remaining_required_count += recycler.get_remaining_total_count()
 
 	return remaining_required_count
@@ -117,14 +102,11 @@ func get_remaining_recycler_required_count() -> int:
 
 # 判断所有回收机是否都已完成回收目标。
 func are_all_recyclers_completed() -> bool:
-	var recycler_cells: Dictionary = recycler_layer.get_cells()
-	if recycler_cells.is_empty():
+	var recyclers: Array[Recycler] = _get_recyclers()
+	if recyclers.is_empty():
 		return false
 
-	for cell in recycler_cells.keys():
-		var recycler: Recycler = recycler_cells[cell] as Recycler
-		assert(recycler != null and is_instance_valid(recycler), "recycler_layer contains an invalid Recycler at %s." % [cell])
-
+	for recycler in recyclers:
 		if not recycler.is_completed():
 			return false
 
@@ -154,6 +136,10 @@ func get_item(cell: Vector2i) -> Item:
 	return item_layer.get_cell(cell) as Item
 
 
+func get_machine(cell: Vector2i) -> Machine:
+	return machine_layer.get_cell(cell) as Machine
+
+
 # 拍点触发时执行完整结算流程。
 func _on_beat_fired(beat_index: int, _beat_time: float) -> void:
 	_simulation.resolve_beat(beat_index)
@@ -163,26 +149,18 @@ func _on_beat_fired(beat_index: int, _beat_time: float) -> void:
 func _init_layers() -> void:
 	main_layer = _create_layer()
 	item_layer = _create_layer()
-	belt_layer = _create_layer()
-	producer_layer = _create_layer()
+	machine_layer = _create_layer()
 	signal_layer = _create_layer()
-	recycler_layer = _create_layer()
 	signal_tower_layer = _create_layer()
-	press_machine_layer = _create_layer()
-	packer_layer = _create_layer()
 
 
 # 清空所有运行时图层。
 func _clear_layers() -> void:
 	main_layer.clear()
 	item_layer.clear()
-	belt_layer.clear()
-	producer_layer.clear()
+	machine_layer.clear()
 	signal_layer.clear()
-	recycler_layer.clear()
 	signal_tower_layer.clear()
-	press_machine_layer.clear()
-	packer_layer.clear()
 
 
 # 只移除运行时关卡内容，保留 World 自身常驻节点与结构。
@@ -211,3 +189,16 @@ func _create_layer() -> MapLayer:
 	var layer: MapLayer = MapLayer.new()
 	layer.cell_size = _config.cell_size
 	return layer
+
+
+func _get_recyclers() -> Array[Recycler]:
+	var recyclers: Array[Recycler] = []
+	var machine_cells: Dictionary = machine_layer.get_cells()
+	for cell in machine_cells.keys():
+		var recycler: Recycler = machine_cells[cell] as Recycler
+		if recycler == null or not is_instance_valid(recycler):
+			continue
+
+		recyclers.append(recycler)
+
+	return recyclers
