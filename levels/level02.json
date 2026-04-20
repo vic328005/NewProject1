@@ -1,80 +1,45 @@
 {
   "level_id": "level02",
-  "display_name": "Level 02",
-  "beat_bpm": 120,
-  "failure_beat_limit": 60,
+  "display_name": "level02",
+  "beat_bpm": 80,
+  "failure_beat_limit": 400,
   "cells": [
     {
-      "x": 5,
-      "y": 8,
+      "x": 9,
+      "y": 7,
       "producer": {
         "facing": "RIGHT",
-        "beat_interval": 3,
+        "beat_interval": 12,
         "production_sequence": [
-          "A",
           "B",
-          "C",
-          "A",
+
           "B",
-          "C",
-          "A",
+
           "B",
-          "C",
-          "A",
+
           "B",
-          "C",
-          "A",
+
           "B",
-          "C",
-          "A",
-          "B",
-          "C",
-          "A",
+
           "B"
+
         ]
       }
     },
     {
-      "x": 6,
-      "y": 8,
+      "x": 10,
+      "y": 7,
       "belt": {
         "input_direction": "RIGHT",
-        "output_direction": "RIGHT",
+        "output_direction": "DOWN",
         "beat_interval": 1
-      }
-    },
-    {
-      "x": 7,
-      "y": 8,
-      "belt": {
-        "input_direction": "RIGHT",
-        "output_direction": "RIGHT",
-        "beat_interval": 1
-      }
-    },
-    {
-      "x": 8,
-      "y": 8,
-      "press_machine": {
-        "facing": "RIGHT",
-        "cargo_type": "B",
-        "beat_interval": 2,
-        "transport_beat_interval": 1
-      }
-    },
-    {
-      "x": 9,
-      "y": 8,
-      "packer": {
-        "facing": "RIGHT",
-        "transport_beat_interval": 1
       }
     },
     {
       "x": 10,
       "y": 8,
       "belt": {
-        "input_direction": "RIGHT",
+        "input_direction": "DOWN",
         "output_direction": "RIGHT",
         "beat_interval": 1
       }
@@ -84,35 +49,135 @@
       "y": 8,
       "belt": {
         "input_direction": "RIGHT",
+        "output_direction": "UP",
+        "beat_interval": 1
+      }
+    },
+    {
+      "x": 11,
+      "y": 7,
+      "belt": {
+        "input_direction": "UP",
+        "output_direction": "UP",
+        "beat_interval": 1
+      }
+    },
+    {
+      "x": 11,
+      "y": 6,
+      "belt": {
+        "input_direction": "UP",
         "output_direction": "RIGHT",
         "beat_interval": 1
       }
     },
     {
       "x": 12,
+      "y": 6,
+      "belt": {
+        "input_direction": "RIGHT",
+        "output_direction": "DOWN",
+        "beat_interval": 1
+      }
+    },
+    {
+      "x": 12,
+      "y": 7,
+      "belt": {
+        "input_direction": "DOWN",
+        "output_direction": "DOWN",
+        "beat_interval": 1
+      }
+    },
+    {
+      "x": 12,
       "y": 8,
+      "belt": {
+        "input_direction": "DOWN",
+        "output_direction": "RIGHT",
+        "beat_interval": 1
+      }
+    },
+    {
+      "x": 13,
+      "y": 8,
+      "belt": {
+        "input_direction": "RIGHT",
+        "output_direction": "UP",
+        "beat_interval": 1
+      }
+    },
+    {
+      "x": 13,
+      "y": 7,
+      "belt": {
+        "input_direction": "UP",
+        "output_direction": "RIGHT",
+        "beat_interval": 1
+      }
+    },
+    {
+      "x": 14,
+      "y": 7,
+      "packer": {
+        "facing": "RIGHT",
+        "transport_beat_interval": 1
+
+      }
+    },
+    {
+      "x": 15,
+      "y": 7,
+      "belt": {
+        "input_direction": "RIGHT",
+        "output_direction": "RIGHT",
+        "beat_interval": 1
+      }
+    },
+    {
+      "x": 16,
+      "y": 7,
+      "belt": {
+        "input_direction": "RIGHT",
+        "output_direction": "RIGHT",
+        "beat_interval": 1
+      }
+    },
+    {
+      "x": 17,
+      "y": 7,
+      "belt": {
+        "input_direction": "RIGHT",
+        "output_direction": "RIGHT",
+        "beat_interval": 1
+      }
+    },
+    {
+      "x": 18,
+      "y": 7,
+      "belt": {
+        "input_direction": "RIGHT",
+        "output_direction": "RIGHT",
+        "beat_interval": 1
+      }
+    },
+    {
+      "x": 19,
+      "y": 7,
       "recycler": {
         "targets": [
           {
-            "product_type": "A",
-            "required_count": 7
-          },
-          {
             "product_type": "B",
-            "required_count": 7
-          },
-          {
-            "product_type": "C",
-            "required_count": 6
+            "required_count": 3
           }
         ]
       }
     },
     {
-      "x": 8,
-      "y": 13,
+      "x": 14,
+      "y": 14,
       "signal_tower": {
-        "max_steps": 10
+        "max_steps": 14
       }
     }
   ]

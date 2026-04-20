@@ -1,6 +1,6 @@
 {
-  "level_id": "level01",
-  "display_name": "level01",
+  "level_id": "level04",
+  "display_name": "level04",
   "beat_bpm": 80,
   "failure_beat_limit": 400,
   "cells": [
@@ -9,7 +9,7 @@
       "y": 5,
       "producer": {
         "facing": "RIGHT",
-        "beat_interval": 12,
+        "beat_interval": 20,
         "production_sequence": [
           "A",
 
@@ -137,9 +137,20 @@
     {
       "x": 14,
       "y": 9,
-      "packer": {
+      "press_machine": {
         "facing": "RIGHT",
+        "cargo_type": "B",
+        "beat_interval": 1,
         "transport_beat_interval": 1
+      }
+    },
+    {
+      "x": 17,
+      "y": 9,
+      "belt": {
+        "input_direction": "RIGHT",
+        "output_direction": "RIGHT",
+        "beat_interval": 1
       }
     },
     {
@@ -152,12 +163,11 @@
       }
     },
     {
-      "x": 17,
+      "x": 21,
       "y": 9,
-      "belt": {
-        "input_direction": "RIGHT",
-        "output_direction": "RIGHT",
-        "beat_interval": 1
+      "packer": {
+        "facing": "RIGHT",
+        "transport_beat_interval": 1
       }
     },
     {
@@ -178,6 +188,7 @@
         "beat_interval": 1
       }
     },
+
     {
       "x": 20,
       "y": 9,
@@ -188,12 +199,21 @@
       }
     },
     {
-      "x": 21,
+      "x": 22,
+      "y": 9,
+      "belt": {
+        "input_direction": "RIGHT",
+        "output_direction": "RIGHT",
+        "beat_interval": 1
+      }
+    },
+    {
+      "x": 23,
       "y": 9,
       "recycler": {
         "targets": [
           {
-            "product_type": "A",
+            "product_type": " B",
             "required_count": 3
           }
         ]

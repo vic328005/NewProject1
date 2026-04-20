@@ -1,0 +1,180 @@
+{
+  "level_id": "level06",
+  "display_name": "level06",
+  "beat_bpm": 80,
+  "failure_beat_limit": 400,
+  "cells": [
+    {
+      "x": 7,
+      "y": 4,
+      "producer": {
+        "facing": "DOWN",
+        "beat_interval": 16,
+        "production_sequence": [
+          "B",
+          "B",
+          "B",
+          "B",
+          "B",
+          "B",
+          "B",
+          "B"
+        ]
+      }
+    },
+    {
+      "x": 7,
+      "y": 5,
+      "belt": {
+        "input_direction": "DOWN",
+        "output_direction": "RIGHT",
+        "beat_interval": 1
+      }
+    },
+    {
+      "x": 8,
+      "y": 5,
+      "belt": {
+        "input_direction": "RIGHT",
+        "output_direction": "RIGHT",
+        "beat_interval": 1
+      }
+    },
+    {
+      "x": 9,
+      "y": 5,
+      "packer": {
+        "facing": "RIGHT",
+        "transport_beat_interval": 1
+      }
+    },
+    {
+      "x": 10,
+      "y": 5,
+      "packer": {
+        "facing": "RIGHT",
+        "transport_beat_interval": 1
+      }
+    },
+    {
+      "x": 11,
+      "y": 5,
+      "packer": {
+        "facing": "RIGHT",
+        "transport_beat_interval": 1
+      }
+    },
+    {
+      "x": 12,
+      "y": 5,
+      "packer": {
+        "facing": "RIGHT",
+        "transport_beat_interval": 1
+      }
+    },
+    {
+      "x": 13,
+      "y": 5,
+      "packer": {
+        "facing": "RIGHT",
+        "transport_beat_interval": 1
+      }
+    },
+    {
+      "x": 14,
+      "y": 5,
+      "packer": {
+        "facing": "RIGHT",
+        "transport_beat_interval": 1
+      }
+    },
+    {
+      "x": 15,
+      "y": 5,
+      "packer": {
+        "facing": "RIGHT",
+        "transport_beat_interval": 1
+      }
+    },
+    {
+      "x": 16,
+      "y": 5,
+      "packer": {
+        "facing": "RIGHT",
+        "transport_beat_interval": 1
+      }
+    },
+    {
+      "x": 17,
+      "y": 5,
+      "packer": {
+        "facing": "RIGHT",
+        "transport_beat_interval": 1
+      }
+    },
+    {
+      "x": 18,
+      "y": 5,
+      "packer": {
+        "facing": "RIGHT",
+        "transport_beat_interval": 1
+      }
+    },
+    {
+      "x": 19,
+      "y": 5,
+      "packer": {
+        "facing": "RIGHT",
+        "transport_beat_interval": 1
+      }
+    },
+    {
+      "x": 20,
+      "y": 5,
+      "press_machine": {
+        "facing": "RIGHT",
+        "cargo_type": "A",
+        "beat_interval": 1,
+        "transport_beat_interval": 1
+      }
+    },
+    {
+      "x": 21,
+      "y": 5,
+      "packer": {
+        "facing": "RIGHT",
+        "transport_beat_interval": 1
+      }
+    },
+    {
+      "x": 22,
+      "y": 5,
+      "belt": {
+        "input_direction": "RIGHT",
+        "output_direction": "RIGHT",
+        "beat_interval": 1
+      }
+    },
+
+    {
+      "x": 23,
+      "y": 5,
+      "recycler": {
+        "targets": [
+
+          {
+            "product_type": "A",
+            "required_count": 5
+          }
+        ]
+      }
+    },
+    {
+      "x": 14,
+      "y": 14,
+      "signal_tower": {
+        "max_steps": 10
+      }
+    }
+  ]
+}
