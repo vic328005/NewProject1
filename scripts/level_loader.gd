@@ -2,7 +2,7 @@ class_name LevelLoader
 extends RefCounted
 
 const BELT_SCENE := preload("res://prefabs/belt.tscn")
-const CARGO_SCENE := preload("res://prefabs/cargo.tscn")
+const ITEM_SCENE := preload("res://prefabs/item.tscn")
 const PRODUCER_SCENE := preload("res://prefabs/producer.tscn")
 const RECYCLER_SCENE := preload("res://prefabs/recycler.tscn")
 const SIGNAL_TOWER_SCENE: PackedScene = preload("res://prefabs/signal_tower.tscn")
@@ -66,10 +66,10 @@ func apply_level_data_to_world(level_data: LevelData, world: World) -> bool:
 			var packer: Packer = _create_packer(cell, packer_data, world)
 			world.add_level_content(packer)
 
-		if cell_data.has("cargo"):
-			var cargo_data: Dictionary = Dictionary(cell_data["cargo"])
-			var cargo: Cargo = _create_cargo(cell, cargo_data, world)
-			world.add_level_content(cargo)
+		if cell_data.has("item"):
+			var item_data: Dictionary = Dictionary(cell_data["item"])
+			var item: Item = _create_item(cell, item_data, world)
+			world.add_level_content(item)
 
 	return true
 
@@ -83,11 +83,12 @@ func _create_belt(cell: Vector2i, belt_data: Dictionary, world: World) -> Belt:
 	return belt
 
 
-func _create_cargo(cell: Vector2i, cargo_data: Dictionary, world: World) -> Cargo:
-	var cargo: Cargo = CARGO_SCENE.instantiate() as Cargo
-	cargo.cargo_type = String(cargo_data["type"])
-	cargo.place_at_cell(world, cell)
-	return cargo
+func _create_item(cell: Vector2i, item_data: Dictionary, world: World) -> Item:
+	var item: Item = ITEM_SCENE.instantiate() as Item
+	item.item_kind = _to_item_kind(String(item_data["kind"]))
+	item.item_type = String(item_data["type"])
+	item.place_at_cell(world, cell)
+	return item
 
 
 func _create_producer(cell: Vector2i, producer_data: Dictionary, world: World) -> Producer:
@@ -138,3 +139,11 @@ func _to_belt_turn_mode(turn_mode_name: String) -> Belt.TurnMode:
 			return Belt.TurnMode.RIGHT
 		_:
 			return Belt.TurnMode.STRAIGHT
+
+
+func _to_item_kind(kind_name: String) -> Item.Kind:
+	match kind_name:
+		"PRODUCT":
+			return Item.Kind.PRODUCT
+		_:
+			return Item.Kind.CARGO

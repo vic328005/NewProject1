@@ -29,13 +29,13 @@ func _init(world: World) -> void:
 ## 这样可以保证本拍的判定只依赖拍初状态和本拍信号，避免同拍连锁影响语义。
 func resolve_beat(beat_index: int, signal_snapshot: Dictionary) -> void:
 	var beat_snapshot: Dictionary = _create_beat_snapshot(beat_index, signal_snapshot)
-	var transport_item_ids: Dictionary = _collect_transport_item_ids(beat_snapshot["items"])
+	var item_ids: Dictionary = _collect_item_ids(beat_snapshot["items"])
 	_apply_output_phase(beat_index)
 	var transport_commands: Dictionary = _create_transport_commands(beat_snapshot)
 	var transport_snapshot_items: Dictionary = _world.item_layer.get_cells().duplicate()
 	var move_success_by_id: Dictionary = _resolve_move_successes(transport_snapshot_items, transport_commands)
 	_apply_transport_phase(beat_index, transport_commands, move_success_by_id)
-	var did_recycler_progress: bool = _apply_input_phase(beat_index, beat_snapshot, transport_item_ids)
+	var did_recycler_progress: bool = _apply_input_phase(beat_index, beat_snapshot, item_ids)
 	_apply_start_phase(beat_index, beat_snapshot)
 
 	if did_recycler_progress and _world.are_all_recyclers_completed():
@@ -55,16 +55,16 @@ func _create_beat_snapshot(beat_index: int, signal_snapshot: Dictionary) -> Dict
 
 ## 收集拍初参与运输结算的物体实例 ID。
 ## 后续输入阶段据此限制只处理拍初已有物体，避免新生成物体在同拍再次参与交互。
-func _collect_transport_item_ids(items: Dictionary) -> Dictionary:
-	var transport_item_ids: Dictionary = {}
+func _collect_item_ids(items: Dictionary) -> Dictionary:
+	var item_ids: Dictionary = {}
 	for item in items.values():
-		var transport_item: TransportItem = item as TransportItem
+		var transport_item: Item = item as Item
 		if transport_item == null or not is_instance_valid(transport_item):
 			continue
 
-		transport_item_ids[transport_item.get_instance_id()] = true
+		item_ids[transport_item.get_instance_id()] = true
 
-	return transport_item_ids
+	return item_ids
 
 
 ## 为拍初每个可运输物体生成本拍运输指令。
@@ -74,7 +74,7 @@ func _create_transport_commands(beat_snapshot: Dictionary) -> Dictionary:
 	var items: Dictionary = beat_snapshot["items"]
 
 	for cell in items.keys():
-		var item: TransportItem = items[cell] as TransportItem
+		var item: Item = items[cell] as Item
 		if item == null or not is_instance_valid(item):
 			continue
 
@@ -85,7 +85,7 @@ func _create_transport_commands(beat_snapshot: Dictionary) -> Dictionary:
 
 ## 根据物体所在格子的机器类型与本拍触发状态，生成单个物体的运输意图。
 ## 优先级体现格子交互语义：压塑机/打包机直通，其次传送带，最后停留。
-func _create_transport_command(cell: Vector2i, item: TransportItem, beat_snapshot: Dictionary) -> Dictionary:
+func _create_transport_command(cell: Vector2i, item: Item, beat_snapshot: Dictionary) -> Dictionary:
 	var triggered_press_machines: Dictionary = beat_snapshot["triggered_press_machines"]
 	var press_machine: PressMachine = _world.press_machine_layer.get_cell(cell) as PressMachine
 	if press_machine != null and is_instance_valid(press_machine) and press_machine.allows_pass_through(item, triggered_press_machines.has(cell), int(beat_snapshot["beat_index"])):
@@ -109,12 +109,12 @@ func _create_transport_command(cell: Vector2i, item: TransportItem, beat_snapsho
 
 
 ## 构造“原地等待”运输指令。
-func _create_wait_command(item: TransportItem, from_cell: Vector2i) -> Dictionary:
+func _create_wait_command(item: Item, from_cell: Vector2i) -> Dictionary:
 	return _create_command(ITEM_COMMAND_WAIT, item, from_cell, {})
 
 
 ## 构造“移动到目标格”运输指令。
-func _create_move_command(item: TransportItem, from_cell: Vector2i, target_cell: Vector2i, extra_data: Dictionary) -> Dictionary:
+func _create_move_command(item: Item, from_cell: Vector2i, target_cell: Vector2i, extra_data: Dictionary) -> Dictionary:
 	var command: Dictionary = _create_command(ITEM_COMMAND_MOVE_TO_CELL, item, from_cell, extra_data)
 	command["target_cell"] = target_cell
 	return command
@@ -122,7 +122,7 @@ func _create_move_command(item: TransportItem, from_cell: Vector2i, target_cell:
 
 ## 构造通用运输指令字典。
 ## 基础字段统一放在这里，额外字段由调用方追加，避免不同指令格式分散。
-func _create_command(command_type: StringName, item: TransportItem, from_cell: Vector2i, extra_data: Dictionary) -> Dictionary:
+func _create_command(command_type: StringName, item: Item, from_cell: Vector2i, extra_data: Dictionary) -> Dictionary:
 	var command: Dictionary = {
 		"type": command_type,
 		"item": item,
@@ -199,7 +199,7 @@ func _resolve_move_success(item_id: int, snapshot_items: Dictionary, item_comman
 		resolve_states[item_id] = 2
 		return false
 
-	var target_occupant: TransportItem = snapshot_items.get(target_cell) as TransportItem
+	var target_occupant: Item = snapshot_items.get(target_cell) as Item
 	if target_occupant == null or not is_instance_valid(target_occupant):
 		move_success_by_id[item_id] = true
 		resolve_states[item_id] = 2
@@ -226,7 +226,7 @@ func _resolve_move_success(item_id: int, snapshot_items: Dictionary, item_comman
 ## 判断某个格子在本拍运输结束后是否会被腾空。
 ## 如果占用者没有运输指令，或其运输指令本身失败，则该格子视为不会释放。
 func _will_cell_be_released(cell: Vector2i, snapshot_items: Dictionary, item_commands: Dictionary, target_to_item_ids: Dictionary, resolve_states: Dictionary, move_success_by_id: Dictionary) -> bool:
-	var occupant: TransportItem = snapshot_items.get(cell) as TransportItem
+	var occupant: Item = snapshot_items.get(cell) as Item
 	if occupant == null or not is_instance_valid(occupant):
 		return true
 
@@ -258,7 +258,7 @@ func _apply_transport_phase(beat_index: int, item_commands: Dictionary, move_suc
 			continue
 
 		var command: Dictionary = item_commands[item_id]
-		var item: TransportItem = command["item"] as TransportItem
+		var item: Item = command["item"] as Item
 		if item == null or not is_instance_valid(item):
 			continue
 
@@ -267,7 +267,7 @@ func _apply_transport_phase(beat_index: int, item_commands: Dictionary, move_suc
 		successful_moves.append(command)
 
 	for command in successful_moves:
-		var item: TransportItem = command["item"] as TransportItem
+		var item: Item = command["item"] as Item
 		if item == null or not is_instance_valid(item):
 			continue
 
@@ -301,28 +301,28 @@ func _apply_output_phase(beat_index: int) -> void:
 				if producer == null or not is_instance_valid(producer):
 					continue
 
-				var produced_cargo: Cargo = _world.spawn_cargo(target_cell, producer.get_pending_output_cargo_type())
-				if produced_cargo == null:
+				var produced_item: Item = _world.spawn_item(target_cell, producer.get_pending_output_cargo_type(), Item.Kind.CARGO)
+				if produced_item == null:
 					continue
 
-				produced_cargo.mark_resolved_on_beat(beat_index)
+				produced_item.mark_resolved_on_beat(beat_index)
 				producer.commit_output_success()
 			&"press_machine":
 				var press_machine: PressMachine = request["machine"] as PressMachine
 				if press_machine == null or not is_instance_valid(press_machine):
 					continue
 
-				var released_cargo: Cargo = press_machine.release_output(target_cell)
-				if released_cargo == null:
+				var released_item: Item = press_machine.release_output(target_cell)
+				if released_item == null:
 					continue
 
-				released_cargo.mark_resolved_on_beat(beat_index)
+				released_item.mark_resolved_on_beat(beat_index)
 			&"packer":
 				var packer: Packer = request["machine"] as Packer
 				if packer == null or not is_instance_valid(packer):
 					continue
 
-				var product: Product = _world.spawn_product(target_cell, packer.get_pending_output_product_type())
+				var product: Item = _world.spawn_item(target_cell, packer.get_pending_output_item_type(), Item.Kind.PRODUCT)
 				if product == null:
 					continue
 
@@ -388,18 +388,18 @@ func _collect_output_requests(beat_index: int) -> Array:
 ## 执行输入阶段，处理拍初运输物体与当前格机器的交互。
 ## 这里只处理拍初已存在的运输物体，确保新出料或新变形物体不会在同拍再次入机。
 ## 返回值表示回收器是否在本拍收到了新的有效进度，用于胜利判定。
-func _apply_input_phase(beat_index: int, beat_snapshot: Dictionary, transport_item_ids: Dictionary) -> bool:
+func _apply_input_phase(beat_index: int, beat_snapshot: Dictionary, item_ids: Dictionary) -> bool:
 	var did_recycler_progress: bool = false
 	var current_items: Dictionary = _world.item_layer.get_cells().duplicate()
 	var triggered_press_machines: Dictionary = beat_snapshot["triggered_press_machines"]
 	var triggered_packers: Dictionary = beat_snapshot["triggered_packers"]
 
 	for cell in current_items.keys():
-		var item: TransportItem = current_items[cell] as TransportItem
+		var item: Item = current_items[cell] as Item
 		if item == null or not is_instance_valid(item):
 			continue
 
-		if not transport_item_ids.has(item.get_instance_id()):
+		if not item_ids.has(item.get_instance_id()):
 			continue
 
 		var recycler: Recycler = _world.recycler_layer.get_cell(cell) as Recycler
@@ -407,38 +407,35 @@ func _apply_input_phase(beat_index: int, beat_snapshot: Dictionary, transport_it
 			if _apply_recycler_input(item, recycler):
 				# 回收成功后，本拍不再继续尝试其他输入交互。
 				item.mark_resolved_on_beat(beat_index)
-				if item is Product:
+				if item.is_product():
 					did_recycler_progress = true
 				continue
 
-		var cargo: Cargo = item as Cargo
 		var press_machine: PressMachine = _world.press_machine_layer.get_cell(cell) as PressMachine
-		if cargo != null and is_instance_valid(cargo) and press_machine != null and is_instance_valid(press_machine) and press_machine.can_accept_input(triggered_press_machines.has(cell)):
-			press_machine.accept_input(cargo)
-			cargo.mark_resolved_on_beat(beat_index)
+		if item.is_cargo() and press_machine != null and is_instance_valid(press_machine) and press_machine.can_accept_input(triggered_press_machines.has(cell)):
+			press_machine.accept_input(item)
+			item.mark_resolved_on_beat(beat_index)
 			continue
 
 		var packer: Packer = _world.packer_layer.get_cell(cell) as Packer
-		if cargo != null and is_instance_valid(cargo) and packer != null and is_instance_valid(packer) and packer.can_accept_input(triggered_packers.has(cell)):
-			packer.accept_input(cargo)
-			cargo.mark_resolved_on_beat(beat_index)
+		if item.is_cargo() and packer != null and is_instance_valid(packer) and packer.can_accept_input(triggered_packers.has(cell)):
+			packer.accept_input(item)
+			item.mark_resolved_on_beat(beat_index)
 
 	return did_recycler_progress
 
 
 ## 处理单个物体进入回收器时的结算。
 ## 原料会直接销毁并计入日志，成品则交由回收器判定是否满足收集条件。
-func _apply_recycler_input(item: TransportItem, recycler: Recycler) -> bool:
-	var cargo: Cargo = item as Cargo
-	if cargo != null and is_instance_valid(cargo):
-		var cargo_type: String = cargo.cargo_type
-		cargo.remove_from_world()
-		recycler.log_cargo_destroyed(cargo_type)
+func _apply_recycler_input(item: Item, recycler: Recycler) -> bool:
+	if item.is_cargo():
+		var item_type: String = item.item_type
+		item.remove_from_world()
+		recycler.log_cargo_destroyed(item_type)
 		return true
 
-	var product: Product = item as Product
-	if product != null and is_instance_valid(product):
-		return recycler.collect_product(product)
+	if item.is_product():
+		return recycler.collect_product(item)
 
 	return false
 
@@ -465,12 +462,12 @@ func _apply_start_phase(beat_index: int, beat_snapshot: Dictionary) -> void:
 		if not press_machine.can_start_cycle(beat_index, triggered_press_machines.has(cell)):
 			continue
 
-		var pressed_cargo: Cargo = press_machine.get_pressed_cargo()
-		if pressed_cargo == null or not is_instance_valid(pressed_cargo):
+		var pressed_item: Item = press_machine.get_pressed_item()
+		if pressed_item == null or not is_instance_valid(pressed_item):
 			continue
 
-		pressed_cargo.cargo_type = press_machine.cargo_type
-		press_machine.begin_press(pressed_cargo, beat_index)
+		pressed_item.item_type = press_machine.cargo_type
+		press_machine.begin_press(pressed_item, beat_index)
 
 	var triggered_packers: Dictionary = beat_snapshot["triggered_packers"]
 	var packer_cells: Dictionary = _world.packer_layer.get_cells()

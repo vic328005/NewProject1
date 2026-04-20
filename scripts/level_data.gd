@@ -7,9 +7,9 @@ const TOP_LEVEL_KEYS := [
 	"beat_bpm",
 	"cells",
 ]
-const CELL_KEYS := ["x", "y", "belt", "cargo", "producer", "recycler", "signal_tower", "press_machine", "packer"]
+const CELL_KEYS := ["x", "y", "belt", "item", "producer", "recycler", "signal_tower", "press_machine", "packer"]
 const BELT_KEYS := ["facing", "turn_mode", "beat_interval"]
-const CARGO_KEYS := ["type"]
+const ITEM_KEYS := ["kind", "type"]
 const PRODUCER_KEYS := ["facing", "beat_interval", "production_sequence"]
 const RECYCLER_KEYS := ["targets"]
 const RECYCLER_TARGET_KEYS := ["product_type", "required_count"]
@@ -18,6 +18,7 @@ const PRESS_MACHINE_KEYS := ["facing", "cargo_type", "beat_interval"]
 const PACKER_KEYS := ["facing"]
 const BELT_TURN_MODE_VALUES := ["STRAIGHT", "LEFT", "RIGHT"]
 const CARGO_TYPE_VALUES: Array[String] = CargoType.VALUES
+const ITEM_KIND_VALUES := ["CARGO", "PRODUCT"]
 
 var level_id: String = ""
 var display_name: String = ""
@@ -119,23 +120,23 @@ static func _parse_cell(raw_cell: Dictionary, index: int, seen_cells: Dictionary
 		return _validation_error(source_label, "duplicate cell coordinates found at (%d, %d)" % [x, y])
 
 	var has_belt: bool = raw_cell.has("belt")
-	var has_cargo: bool = raw_cell.has("cargo")
+	var has_item: bool = raw_cell.has("item")
 	var has_producer: bool = raw_cell.has("producer")
 	var has_recycler: bool = raw_cell.has("recycler")
 	var has_signal_tower: bool = raw_cell.has("signal_tower")
 	var has_press_machine: bool = raw_cell.has("press_machine")
 	var has_packer: bool = raw_cell.has("packer")
-	if not has_belt and not has_cargo and not has_producer and not has_recycler and not has_signal_tower and not has_press_machine and not has_packer:
+	if not has_belt and not has_item and not has_producer and not has_recycler and not has_signal_tower and not has_press_machine and not has_packer:
 		return _validation_error(source_label, "%s must contain at least one gameplay object" % cell_label)
 
-	if has_signal_tower and (has_belt or has_cargo or has_producer or has_recycler or has_press_machine or has_packer):
+	if has_signal_tower and (has_belt or has_item or has_producer or has_recycler or has_press_machine or has_packer):
 		return _validation_error(source_label, "%s.signal_tower must occupy its own cell" % cell_label)
 
 	if has_press_machine and (has_belt or has_producer or has_recycler or has_signal_tower or has_packer):
-		return _validation_error(source_label, "%s.press_machine can only share a cell with cargo" % cell_label)
+		return _validation_error(source_label, "%s.press_machine can only share a cell with item" % cell_label)
 
 	if has_packer and (has_belt or has_producer or has_recycler or has_signal_tower or has_press_machine):
-		return _validation_error(source_label, "%s.packer can only share a cell with cargo" % cell_label)
+		return _validation_error(source_label, "%s.packer can only share a cell with item" % cell_label)
 
 	var normalized_cell: Dictionary = {
 		"x": x,
@@ -152,15 +153,15 @@ static func _parse_cell(raw_cell: Dictionary, index: int, seen_cells: Dictionary
 
 		normalized_cell["belt"] = normalized_belt
 
-	if has_cargo:
-		if typeof(raw_cell["cargo"]) != TYPE_DICTIONARY:
-			return _validation_error(source_label, "%s.cargo must be an object" % cell_label)
+	if has_item:
+		if typeof(raw_cell["item"]) != TYPE_DICTIONARY:
+			return _validation_error(source_label, "%s.item must be an object" % cell_label)
 
-		var normalized_cargo: Variant = _parse_cargo(raw_cell["cargo"], cell_label, source_label)
-		if normalized_cargo == null:
+		var normalized_item: Variant = _parse_item(raw_cell["item"], cell_label, source_label)
+		if normalized_item == null:
 			return null
 
-		normalized_cell["cargo"] = normalized_cargo
+		normalized_cell["item"] = normalized_item
 
 	if has_producer:
 		if typeof(raw_cell["producer"]) != TYPE_DICTIONARY:
@@ -201,6 +202,8 @@ static func _parse_cell(raw_cell: Dictionary, index: int, seen_cells: Dictionary
 			return null
 
 		normalized_cell["press_machine"] = normalized_press_machine
+		if has_item and String(normalized_cell["item"]["kind"]) != "CARGO":
+			return _validation_error(source_label, "%s.press_machine can only share a cell with item.kind CARGO" % cell_label)
 
 	if has_packer:
 		if typeof(raw_cell["packer"]) != TYPE_DICTIONARY:
@@ -211,6 +214,8 @@ static func _parse_cell(raw_cell: Dictionary, index: int, seen_cells: Dictionary
 			return null
 
 		normalized_cell["packer"] = normalized_packer
+		if has_item and String(normalized_cell["item"]["kind"]) != "CARGO":
+			return _validation_error(source_label, "%s.packer can only share a cell with item.kind CARGO" % cell_label)
 
 	seen_cells[cell] = true
 	return normalized_cell
@@ -250,20 +255,28 @@ static func _parse_belt(raw_belt: Dictionary, cell_label: String, source_label: 
 	}
 
 
-static func _parse_cargo(raw_cargo: Dictionary, cell_label: String, source_label: String) -> Variant:
-	var cargo_label: String = "%s.cargo" % cell_label
-	if not _ensure_allowed_keys(raw_cargo, CARGO_KEYS, cargo_label, source_label):
+static func _parse_item(raw_item: Dictionary, cell_label: String, source_label: String) -> Variant:
+	var item_label: String = "%s.item" % cell_label
+	if not _ensure_allowed_keys(raw_item, ITEM_KEYS, item_label, source_label):
 		return null
 
-	if not _has_non_empty_string(raw_cargo, "type"):
-		return _validation_error(source_label, "%s.type must be a non-empty string" % cargo_label)
+	if not _has_non_empty_string(raw_item, "kind"):
+		return _validation_error(source_label, "%s.kind must be a non-empty string" % item_label)
 
-	var cargo_type: String = CargoType.normalize(raw_cargo["type"])
-	if not CargoType.is_valid(cargo_type):
-		return _validation_error(source_label, "%s.type must be one of %s" % [cargo_label, CARGO_TYPE_VALUES])
+	if not _has_non_empty_string(raw_item, "type"):
+		return _validation_error(source_label, "%s.type must be a non-empty string" % item_label)
+
+	var item_kind: String = String(raw_item["kind"]).strip_edges().to_upper()
+	if not ITEM_KIND_VALUES.has(item_kind):
+		return _validation_error(source_label, "%s.kind must be one of %s" % [item_label, ITEM_KIND_VALUES])
+
+	var item_type: String = CargoType.normalize(raw_item["type"])
+	if not CargoType.is_valid(item_type):
+		return _validation_error(source_label, "%s.type must be one of %s" % [item_label, CARGO_TYPE_VALUES])
 
 	return {
-		"type": cargo_type,
+		"kind": item_kind,
+		"type": item_type,
 	}
 
 

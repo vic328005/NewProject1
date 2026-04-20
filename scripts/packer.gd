@@ -1,8 +1,8 @@
 extends Node2D
 class_name Packer
 
-# 打包机只在信号触发时吃入 Cargo，
-# 然后在开始阶段把 Cargo 转成待出料的 Product，
+# 打包机只在信号触发时吃入 Cargo 形态的 Item，
+# 然后在开始阶段把它转成待出料的 Product，
 # 下一拍进入可出料状态。
 
 const IDLE_ANIMATION: StringName = &"idle"
@@ -15,10 +15,10 @@ var _world: World
 var _registered_cell: Vector2i
 var _is_registered_to_layer: bool = false
 @onready var _animated_sprite: AnimatedSprite2D = $AnimatedSprite2D
-# 机器内部当前暂存的原料。进入打包流程前，Cargo 会先停留在这里。
-var _held_cargo: Cargo
+# 机器内部当前暂存的原料。进入打包流程前，Item 会先停留在这里。
+var _held_item: Item
 # 打包完成后，这里记录即将生成的 Product 类型。
-var _pending_output_product_type: String = ""
+var _pending_output_item_type: String = ""
 # 允许出料的拍点。-1 表示当前没有待出料内容。
 var _output_ready_beat: int = -1
 
@@ -50,7 +50,7 @@ func get_target_cell() -> Vector2i:
 
 # 判断当前是否存在尚未落地到地图的待出料 Product。
 func has_pending_output() -> bool:
-	return _pending_output_product_type != ""
+	return _pending_output_item_type != ""
 
 
 # 判断指定拍点是否已经到达允许出料的时机。
@@ -59,74 +59,75 @@ func can_output_on_beat(beat_index: int) -> bool:
 
 
 # 返回当前待出料的 Product 类型，要求外部先确认确实有待出料。
-func get_pending_output_product_type() -> String:
+func get_pending_output_item_type() -> String:
 	assert(has_pending_output(), "Packer has no pending output.")
-	return _pending_output_product_type
+	return _pending_output_item_type
 
 
 # 在出料成功提交后清空待出料状态并刷新动画。
 func commit_output_success() -> void:
 	# Product 真正生成到地图后，清空待出料状态。
-	_pending_output_product_type = ""
+	_pending_output_item_type = ""
 	_output_ready_beat = -1
 	_update_animation()
 
 
 # 判断当前拍点是否允许机器吃入新的 Cargo。
 func can_accept_input(is_triggered: bool) -> bool:
-	_clear_invalid_held_cargo()
+	_clear_invalid_held_item()
 	# 只有被信号触发、机内为空、且没有待出料时才允许吃入 Cargo。
-	return is_triggered and _held_cargo == null and not has_pending_output()
+	return is_triggered and _held_item == null and not has_pending_output()
 
 
 # 将输入的 Cargo 收入机器内部，进入待打包状态。
-func accept_input(cargo: Cargo) -> void:
-	assert(cargo != null and is_instance_valid(cargo), "Packer requires a valid Cargo to accept input.")
-	_clear_invalid_held_cargo()
-	assert(_held_cargo == null, "Packer cannot accept input while occupied.")
-	cargo.store_in_machine(global_position)
-	_held_cargo = cargo
+func accept_input(item: Item) -> void:
+	assert(item != null and is_instance_valid(item), "Packer requires a valid Item to accept input.")
+	assert(item.is_cargo(), "Packer can only accept cargo items.")
+	_clear_invalid_held_item()
+	assert(_held_item == null, "Packer cannot accept input while occupied.")
+	item.store_in_machine(global_position)
+	_held_item = item
 	_update_animation()
 
 
 # 判断本拍是否满足启动一次打包流程的条件。
 func can_start_cycle(beat_index: int, is_triggered: bool) -> bool:
-	_clear_invalid_held_cargo()
+	_clear_invalid_held_item()
 	# 开始打包前必须已经持有原料，且当前没有上一轮的待出料残留。
-	return is_triggered and _held_cargo != null and is_instance_valid(_held_cargo) and not has_pending_output()
+	return is_triggered and _held_item != null and is_instance_valid(_held_item) and not has_pending_output()
 
 
 # 启动打包流程，把机内 Cargo 转成下一拍可出的 Product 记录。
 func start_cycle(beat_index: int) -> void:
-	_clear_invalid_held_cargo()
-	assert(_held_cargo != null and is_instance_valid(_held_cargo), "Packer requires held Cargo to start packing.")
+	_clear_invalid_held_item()
+	assert(_held_item != null and is_instance_valid(_held_item), "Packer requires held Item to start packing.")
 	# 打包阶段不立即生成 Product，而是先记录类型并延后一拍出料。
-	_pending_output_product_type = _held_cargo.cargo_type
+	_pending_output_item_type = _held_item.item_type
 	_output_ready_beat = beat_index + 1
-	_held_cargo.remove_from_world()
-	_held_cargo = null
+	_held_item.remove_from_world()
+	_held_item = null
 	_update_animation()
 
 
 # 判断运输物经过本格时是否可以直接穿过打包机。
-func allows_pass_through(item: TransportItem, is_triggered: bool) -> bool:
-	_clear_invalid_held_cargo()
+func allows_pass_through(item: Item, is_triggered: bool) -> bool:
+	_clear_invalid_held_item()
 	# 机内占用或已有待出料时，任何运输物都不能穿过该格。
-	if _held_cargo != null or has_pending_output():
+	if _held_item != null or has_pending_output():
 		return false
 
 	# 被触发时，Cargo 应该被机器吃入，不能继续直通。
-	if item is Cargo and is_triggered:
+	if item.is_cargo() and is_triggered:
 		return false
 
 	return true
 
 
-# 清理已经失效的内部 Cargo 引用，避免机器状态悬空。
-func _clear_invalid_held_cargo() -> void:
-	# 某些情况下内部 Cargo 可能已被外部销毁，这里顺手把悬空引用清掉。
-	if _held_cargo != null and not is_instance_valid(_held_cargo):
-		_held_cargo = null
+# 清理已经失效的内部 Item 引用，避免机器状态悬空。
+func _clear_invalid_held_item() -> void:
+	# 某些情况下内部 Item 可能已被外部销毁，这里顺手把悬空引用清掉。
+	if _held_item != null and not is_instance_valid(_held_item):
+		_held_item = null
 		_update_animation()
 
 
@@ -158,7 +159,7 @@ func _unregister_from_packer_layer() -> void:
 func _update_animation() -> void:
 	# 只要机内有原料，或已经打包完成但还没出料，都视为工作中。
 	var target_animation: StringName = IDLE_ANIMATION
-	if _held_cargo != null or has_pending_output():
+	if _held_item != null or has_pending_output():
 		target_animation = WORK_ANIMATION
 
 	# 动画切换时直接播放目标动画；没切换但意外停播时则补一次播放。

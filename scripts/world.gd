@@ -1,20 +1,18 @@
 class_name World
 extends Node2D
 
-# 货物预制体模板，用于按格子动态创建货物实例。
-const CARGO_SCENE: PackedScene = preload("res://prefabs/cargo.tscn")
-# 产品预制体模板，用于按格子动态创建产品实例。
-const PRODUCT_SCENE: PackedScene = preload("res://prefabs/product.tscn")
+# 运输物预制体模板，用于按格子动态创建 item 实例。
+const ITEM_SCENE: PackedScene = preload("res://prefabs/item.tscn")
 # 环境预制体模板，用于加载世界基础场景。
 const ENVIRONMENT_SCENE: PackedScene = preload("res://prefabs/environment.tscn")
 
 # 主层：承载基础元胞网格逻辑与通用世界映射。
 var main_layer: MapLayer
-# 运输物层：记录所有 cargo / product 实例的占用与移动。
+# 运输物层：记录所有 item 实例的占用与移动。
 var item_layer: MapLayer
 # 传送带层：处理有序运输设备的每拍行为。
 var belt_layer: MapLayer
-# 生产机层：记录生成货物的设备。
+# 生产机层：记录生成原料的设备。
 var producer_layer: MapLayer
 # 回收机层：记录回收目标与进度。
 var recycler_layer: MapLayer
@@ -139,32 +137,21 @@ func add_level_content(node: Node) -> void:
 	add_child(node)
 
 
-# 在指定格子生成货物实例，失败时返回 null。
-func spawn_cargo(cell: Vector2i, cargo_type: String) -> Cargo:
+# 在指定格子生成运输物实例，失败时返回 null。
+func spawn_item(cell: Vector2i, item_type: String, item_kind: Item.Kind) -> Item:
 	if item_layer.has_cell(cell):
 		return null
 
-	var cargo: Cargo = CARGO_SCENE.instantiate() as Cargo
-	cargo.cargo_type = cargo_type
-	cargo.place_at_cell(self, cell)
-	add_level_content(cargo)
-	return cargo
+	var item: Item = ITEM_SCENE.instantiate() as Item
+	item.item_type = item_type
+	item.item_kind = item_kind
+	item.place_at_cell(self, cell)
+	add_level_content(item)
+	return item
 
 
-# 在指定格子生成产品实例，失败时返回 null。
-func spawn_product(cell: Vector2i, product_type: String) -> Product:
-	if item_layer.has_cell(cell):
-		return null
-
-	var product: Product = PRODUCT_SCENE.instantiate() as Product
-	product.product_type = product_type
-	product.place_at_cell(self, cell)
-	add_level_content(product)
-	return product
-
-
-func get_transport_item(cell: Vector2i) -> TransportItem:
-	return item_layer.get_cell(cell) as TransportItem
+func get_item(cell: Vector2i) -> Item:
+	return item_layer.get_cell(cell) as Item
 
 
 # 拍点触发时先固定本拍信号快照，再执行完整结算流程。

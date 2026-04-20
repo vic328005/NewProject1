@@ -56,11 +56,11 @@ func can_accept_product(target_product_type: String) -> bool:
 	return int(_target_states[target_index]["remaining_count"]) > 0
 
 
-func collect_product(target_product: Product) -> bool:
-	if target_product == null or not is_instance_valid(target_product):
+func collect_product(target_product: Item) -> bool:
+	if target_product == null or not is_instance_valid(target_product) or not target_product.is_product():
 		return false
 
-	var normalized_product_type: String = CargoType.normalize(target_product.product_type)
+	var normalized_product_type: String = CargoType.normalize(target_product.item_type)
 	var target_index: int = _find_target_index(normalized_product_type)
 	if target_index == -1:
 		return false
