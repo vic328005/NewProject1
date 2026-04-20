@@ -4,6 +4,8 @@ class_name Packer
 const DEFAULT_TRANSPORT_BEAT_INTERVAL: int = 2
 const IDLE_ANIMATION: StringName = &"idle"
 const WORK_ANIMATION: StringName = &"work"
+const SIGNAL_FEEDBACK_CENTER: Vector2 = Vector2(32.0, 16.0)
+const SIGNAL_FEEDBACK_RING_COLOR: Color = Color(1.0, 1.0, 1.0, 1.0)
 
 # 打包机只在信号触发时吃入 Cargo 形态的 Item，
 # 然后在同拍把它转成 Product 并立即尝试出料。
@@ -31,6 +33,7 @@ var _held_item: Item
 var _machine_state: MachineState = MachineState.IDLE
 # 逻辑已回空闲后，继续把 work 动画补播完整一轮。
 var _is_playing_work_once: bool = false
+var _signal_feedback_strength: float = 0.0
 
 
 # 初始化打包机引用，并在场景进入时同步动画和图层登记。
@@ -251,6 +254,47 @@ func _on_animation_finished() -> void:
 		return
 
 	_update_animation()
+
+
+func _draw() -> void:
+	if _signal_feedback_strength <= 0.0:
+		return
+
+	var expansion_progress: float = 1.0 - _signal_feedback_strength
+	var glow_radius: float = lerpf(18.0, 28.0, expansion_progress)
+	var glow_color: Color = SIGNAL_FEEDBACK_RING_COLOR
+	glow_color.a = 0.08 * _signal_feedback_strength
+	draw_circle(SIGNAL_FEEDBACK_CENTER, glow_radius, glow_color)
+
+	var ring_color: Color = SIGNAL_FEEDBACK_RING_COLOR
+	ring_color.a = 0.55 * _signal_feedback_strength
+	draw_arc(
+		SIGNAL_FEEDBACK_CENTER,
+		glow_radius + 2.0,
+		0.0,
+		TAU,
+		32,
+		ring_color,
+		1.5 + 1.0 * _signal_feedback_strength
+	)
+
+
+func _apply_signal_feedback_visuals(strength: float) -> void:
+	_signal_feedback_strength = strength
+	if _animated_sprite != null:
+		var flash_boost: float = strength * 0.28
+		_animated_sprite.modulate = Color(
+			1.0 + flash_boost,
+			1.0 + flash_boost,
+			1.0 + flash_boost,
+			1.0
+		)
+
+	queue_redraw()
+
+
+func _get_signal_feedback_scale_target() -> Node2D:
+	return _animated_sprite
 
 
 func _is_triggered_on_beat(_beat_index: int, receives_signal: bool) -> bool:

@@ -9,6 +9,9 @@ const DEFAULT_TRANSPORT_BEAT_INTERVAL: int = 2
 const ANIMATION_A: StringName = &"A"
 const ANIMATION_B: StringName = &"B"
 const ANIMATION_C: StringName = &"C"
+const SIGNAL_FEEDBACK_TINT: Color = Color(1.0, 1.0, 1.0, 1.0)
+const SIGNAL_FEEDBACK_RING_COLOR: Color = Color(1.0, 1.0, 1.0, 1.0)
+const SIGNAL_FEEDBACK_ARROW_COLOR: Color = Color(1.0, 1.0, 1.0, 1.0)
 
 enum AnimationState {
 	IDLE,
@@ -68,6 +71,7 @@ var _press_start_beat: int = -1
 var _output_ready_beat: int = -1
 var _animated_sprite: AnimatedSprite2D
 var _machine_state: MachineState = MachineState.IDLE
+var _signal_feedback_strength: float = 0.0
 
 
 func _ready() -> void:
@@ -307,19 +311,22 @@ func _get_animation_name_for_cargo_type() -> StringName:
 
 
 func _draw() -> void:
+	_draw_signal_feedback_ring()
+
 	var shape_color: Color = _get_shape_color()
+	var arrow_color: Color = _get_arrow_color()
 	var arrow_tip: Vector2 = PREVIEW_CENTER + _direction_to_vector(facing) * 16.0
 	var arrow_tail: Vector2 = PREVIEW_CENTER - _direction_to_vector(facing) * 8.0
-	draw_line(arrow_tail, arrow_tip, Color(0.18, 0.14, 0.08, 1.0), 4.0)
-	_draw_arrow_head(arrow_tip, _direction_to_vector(facing))
+	draw_line(arrow_tail, arrow_tip, arrow_color, 4.0)
+	_draw_arrow_head(arrow_tip, _direction_to_vector(facing), arrow_color)
 
 	match cargo_type:
 		CargoType.B:
 			draw_circle(PREVIEW_CENTER, 12.0, shape_color)
-			draw_arc(PREVIEW_CENTER, 12.0, 0.0, TAU, 24, Color.BLACK, 2.0)
+			draw_arc(PREVIEW_CENTER, 12.0, 0.0, TAU, 24, _get_outline_color(), 2.0)
 		CargoType.C:
 			draw_rect(Rect2(PREVIEW_CENTER - Vector2.ONE * 11.0, Vector2.ONE * 22.0), shape_color, true)
-			draw_rect(Rect2(PREVIEW_CENTER - Vector2.ONE * 11.0, Vector2.ONE * 22.0), Color.BLACK, false, 2.0)
+			draw_rect(Rect2(PREVIEW_CENTER - Vector2.ONE * 11.0, Vector2.ONE * 22.0), _get_outline_color(), false, 2.0)
 		_:
 			var triangle_points: PackedVector2Array = PackedVector2Array([
 				PREVIEW_CENTER + Vector2(0.0, -14.0),
@@ -333,10 +340,10 @@ func _draw() -> void:
 				triangle_points[0],
 			])
 			draw_colored_polygon(triangle_points, shape_color)
-			draw_polyline(closed_triangle_points, Color.BLACK, 2.0)
+			draw_polyline(closed_triangle_points, _get_outline_color(), 2.0)
 
 
-func _draw_arrow_head(tip: Vector2, direction: Vector2) -> void:
+func _draw_arrow_head(tip: Vector2, direction: Vector2, arrow_color: Color) -> void:
 	var normalized_direction: Vector2 = direction.normalized()
 	var normal: Vector2 = Vector2(-normalized_direction.y, normalized_direction.x)
 	var arrow_size: float = 8.0
@@ -346,8 +353,31 @@ func _draw_arrow_head(tip: Vector2, direction: Vector2) -> void:
 			tip - normalized_direction * arrow_size + normal * (arrow_size * 0.6),
 			tip - normalized_direction * arrow_size - normal * (arrow_size * 0.6),
 		]),
-		Color(0.18, 0.14, 0.08, 1.0)
+		arrow_color
 	)
+
+
+func _draw_signal_feedback_ring() -> void:
+	if _signal_feedback_strength <= 0.0:
+		return
+
+	var expansion_progress: float = 1.0 - _signal_feedback_strength
+	var glow_radius: float = lerpf(21.0, 31.0, expansion_progress)
+	var glow_color: Color = SIGNAL_FEEDBACK_RING_COLOR
+	glow_color.a = 0.09 * _signal_feedback_strength
+	draw_circle(PREVIEW_CENTER, glow_radius, glow_color)
+
+	var ring_color: Color = SIGNAL_FEEDBACK_RING_COLOR
+	ring_color.a = 0.58 * _signal_feedback_strength
+	draw_arc(PREVIEW_CENTER, glow_radius + 2.0, 0.0, TAU, 32, ring_color, 1.5 + 1.0 * _signal_feedback_strength)
+
+
+func _get_arrow_color() -> Color:
+	return Color(0.18, 0.14, 0.08, 1.0).lerp(SIGNAL_FEEDBACK_ARROW_COLOR, _signal_feedback_strength * 0.92)
+
+
+func _get_outline_color() -> Color:
+	return Color.BLACK.lerp(SIGNAL_FEEDBACK_ARROW_COLOR, _signal_feedback_strength * 0.45)
 
 
 func _direction_to_vector(direction: Direction.Value) -> Vector2:
@@ -363,17 +393,33 @@ func _direction_to_vector(direction: Direction.Value) -> Vector2:
 
 
 func _get_shape_color() -> Color:
+	var base_color: Color
 	match cargo_type:
 		CargoType.B:
-			return sprite_tint_b
+			base_color = sprite_tint_b
 		CargoType.C:
-			return sprite_tint_c
+			base_color = sprite_tint_c
 		_:
-			return sprite_tint_a
+			base_color = sprite_tint_a
+
+	return base_color.lerp(SIGNAL_FEEDBACK_TINT, _signal_feedback_strength * 0.6)
 
 
 func _get_sprite_tint_color() -> Color:
-	return _get_shape_color()
+	var base_color: Color = _get_shape_color()
+	return base_color.lerp(Color(1.0, 1.0, 1.0, 1.0), _signal_feedback_strength * 0.35)
+
+
+func _apply_signal_feedback_visuals(strength: float) -> void:
+	_signal_feedback_strength = strength
+	if _animated_sprite != null:
+		_animated_sprite.modulate = _get_sprite_tint_color()
+
+	queue_redraw()
+
+
+func _get_signal_feedback_scale_target() -> Node2D:
+	return _get_animated_sprite()
 
 
 func _is_triggered_on_beat(beat_index: int, receives_signal: bool) -> bool:

@@ -12,6 +12,11 @@ class_name Item
 # 运输动画占一个拍子的比例。
 # 适当压缩拍内移动时长，让传送带运输看起来更利落。
 const MOVE_DURATION_RATIO: float = 0.4
+const MOVE_PULSE_MIN_DURATION: float = 0.22
+const MOVE_PULSE_SHRINK_SCALE: float = 0.78
+const MOVE_PULSE_OVERSHOOT_SCALE: float = 1.14
+const MOVE_PULSE_SHRINK_RATIO: float = 0.26
+const MOVE_PULSE_OVERSHOOT_RATIO: float = 0.22
 
 # Cargo 形态下三种类型对应的贴图。
 const CARGO_TEXTURE_1: Texture2D = preload("res://assets/images/cargo_1.png")
@@ -63,6 +68,7 @@ var _registered_cell: Vector2i
 var _is_registered_to_layer: bool = false
 # 当前正在播放的移动动画；没有动画时为 null。
 var _move_tween: Tween
+var _move_pulse_tween: Tween
 # 最近一次参与结算的拍点编号。
 # 目前主要由 WorldSimulation 写入，给后续扩展保留状态。
 var last_resolved_beat: int = -1
@@ -72,6 +78,7 @@ var _flow_direction: Direction.Value = Direction.Value.RIGHT
 var _has_flow_direction: bool = false
 # 精灵节点引用，用于刷新外观。
 @onready var _sprite: Sprite2D = $Sprite2D
+var _sprite_base_scale: Vector2 = Vector2.ONE
 
 
 # 节点进入场景树后的初始化入口。
@@ -81,6 +88,8 @@ var _has_flow_direction: bool = false
 # 3. 若还没登记到 item_layer，则按当前位置自动登记。
 func _ready() -> void:
 	_update_visual_state()
+	_sprite_base_scale = _sprite.scale
+	_reset_sprite_scale()
 
 	if _world == null:
 		_world = GM.world
@@ -252,6 +261,7 @@ func _start_move_to_global_position(target_global_position: Vector2) -> void:
 	_move_tween = create_tween()
 	var move_tweener: PropertyTweener = _move_tween.tween_property(self, "global_position", target_global_position, move_duration)
 	move_tweener.set_trans(Tween.TRANS_LINEAR)
+	_start_move_pulse(move_duration)
 	_move_tween.finished.connect(_on_move_tween_finished)
 
 
@@ -267,17 +277,61 @@ func _get_move_duration_seconds() -> float:
 # 如果当前存在移动动画，则主动终止并清空引用。
 # 在重新定位、入机、销毁前都要先调用，避免旧动画继续覆盖位置。
 func _stop_move_tween() -> void:
-	if not is_instance_valid(_move_tween):
-		return
+	if is_instance_valid(_move_tween):
+		_move_tween.kill()
+		_move_tween = null
 
-	_move_tween.kill()
-	_move_tween = null
+	if is_instance_valid(_move_pulse_tween):
+		_move_pulse_tween.kill()
+		_move_pulse_tween = null
+
+	_reset_sprite_scale()
 
 
 # Tween 正常播放结束后的回调。
 # 这里只负责清理引用，不做额外逻辑。
 func _on_move_tween_finished() -> void:
 	_move_tween = null
+	_reset_sprite_scale()
+
+
+func _on_move_pulse_tween_finished() -> void:
+	_move_pulse_tween = null
+	_reset_sprite_scale()
+
+
+func _start_move_pulse(move_duration: float) -> void:
+	if _sprite == null or move_duration <= 0.0:
+		return
+
+	var pulse_duration: float = maxf(move_duration, MOVE_PULSE_MIN_DURATION)
+	var shrink_duration: float = pulse_duration * MOVE_PULSE_SHRINK_RATIO
+	var overshoot_duration: float = pulse_duration * MOVE_PULSE_OVERSHOOT_RATIO
+	var return_duration: float = maxf(pulse_duration - shrink_duration - overshoot_duration, 0.0)
+
+	_move_pulse_tween = create_tween()
+	var shrink_scale: Vector2 = _sprite_base_scale * MOVE_PULSE_SHRINK_SCALE
+	var overshoot_scale: Vector2 = _sprite_base_scale * MOVE_PULSE_OVERSHOOT_SCALE
+
+	var shrink_tweener: PropertyTweener = _move_pulse_tween.tween_property(_sprite, "scale", shrink_scale, shrink_duration)
+	shrink_tweener.set_trans(Tween.TRANS_SINE)
+	shrink_tweener.set_ease(Tween.EASE_OUT)
+
+	var overshoot_tweener: PropertyTweener = _move_pulse_tween.tween_property(_sprite, "scale", overshoot_scale, overshoot_duration)
+	overshoot_tweener.set_trans(Tween.TRANS_SINE)
+	overshoot_tweener.set_ease(Tween.EASE_OUT)
+
+	var return_tweener: PropertyTweener = _move_pulse_tween.tween_property(_sprite, "scale", _sprite_base_scale, return_duration)
+	return_tweener.set_trans(Tween.TRANS_SINE)
+	return_tweener.set_ease(Tween.EASE_IN_OUT)
+	_move_pulse_tween.finished.connect(_on_move_pulse_tween_finished)
+
+
+func _reset_sprite_scale() -> void:
+	if _sprite == null:
+		return
+
+	_sprite.scale = _sprite_base_scale
 
 
 # 根据当前 item_kind 与 item_type 刷新精灵贴图。

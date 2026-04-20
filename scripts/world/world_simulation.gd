@@ -26,6 +26,7 @@ func _init(world: World) -> void:
 func resolve_beat(beat_index: int) -> void:
 	var machines: Array[Machine] = _collect_machines()
 	var machine_signal_states: Dictionary = _collect_machine_signal_states(machines)
+	_trigger_signal_feedbacks(machines, machine_signal_states, beat_index)
 	var item_snapshot: Dictionary = _collect_item_snapshot()
 	var input_results: Dictionary = _plan_inputs(item_snapshot, machine_signal_states, beat_index)
 
@@ -93,6 +94,15 @@ func _collect_machine_signal_states(machines: Array[Machine]) -> Dictionary:
 		machine_signal_states[machine] = _world.signal_layer.has_cell(machine.get_registered_cell())
 
 	return machine_signal_states
+
+
+func _trigger_signal_feedbacks(machines: Array[Machine], machine_signal_states: Dictionary, beat_index: int) -> void:
+	for machine in machines:
+		if not bool(machine_signal_states.get(machine, false)):
+			continue
+
+		if machine is Packer or machine is PressMachine:
+			machine.trigger_signal_feedback(beat_index)
 
 
 func _plan_outputs(machines: Array[Machine], machine_signal_states: Dictionary, item_snapshot: Dictionary, beat_index: int) -> Array[Dictionary]:
