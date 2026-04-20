@@ -271,6 +271,12 @@
             1,
             2
           ]
+        },
+        "transport_beat_interval": {
+          "enum": [
+            1,
+            2
+          ]
         }
       }
     },
@@ -283,6 +289,12 @@
       "properties": {
         "facing": {
           "$ref": "#/$defs/directionString"
+        },
+        "transport_beat_interval": {
+          "enum": [
+            1,
+            2
+          ]
         }
       }
     },

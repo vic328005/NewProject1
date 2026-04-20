@@ -1,9 +1,12 @@
 extends Machine
 class_name Packer
 
+const DEFAULT_TRANSPORT_BEAT_INTERVAL: int = 2
+const IDLE_ANIMATION: StringName = &"idle"
+const WORK_ANIMATION: StringName = &"work"
+
 # 打包机只在信号触发时吃入 Cargo 形态的 Item，
-# 然后在结算里的机器状态更新中把它转成待出料的 Product，
-# 下一拍进入可出料状态。
+# 然后在同拍把它转成 Product 并立即尝试出料。
 
 enum AnimationState {
 	IDLE,
@@ -17,20 +20,28 @@ enum MachineState {
 
 # 机器朝向决定出料目标格。
 var facing: Direction.Value = Direction.Value.RIGHT
+var transport_beat_interval: int = DEFAULT_TRANSPORT_BEAT_INTERVAL:
+	set(value):
+		transport_beat_interval = clampi(value, 1, 2)
 
 @onready var _animated_sprite: AnimatedSprite2D = $AnimatedSprite2D
 # 机器内部当前暂存的原料。进入打包流程前，Item 会先停留在这里。
 var _held_item: Item
-# 打包机当前业务状态。进入工作态后要完整跑完一拍并产出后才回到空闲态。
+# 打包机当前业务状态。逻辑上出料完成后立即回空闲。
 var _machine_state: MachineState = MachineState.IDLE
-# 打包完成后，这里记录即将生成的 Product 类型。
-var _pending_output_item_type: String = ""
-# 允许出料的拍点。-1 表示当前没有待出料内容。
-var _output_ready_beat: int = -1
+# 逻辑已回空闲后，继续把 work 动画补播完整一轮。
+var _is_playing_work_once: bool = false
 
 
 # 初始化打包机引用，并在场景进入时同步动画和图层登记。
 func _ready() -> void:
+	var sprite_frames: SpriteFrames = _animated_sprite.sprite_frames
+	if sprite_frames != null and sprite_frames.has_animation(WORK_ANIMATION):
+		sprite_frames.set_animation_loop(WORK_ANIMATION, false)
+
+	if not _animated_sprite.animation_finished.is_connected(_on_animation_finished):
+		_animated_sprite.animation_finished.connect(_on_animation_finished)
+
 	# 先同步一次动画状态，避免场景初次进入时精灵停在错误动画上。
 	_update_animation()
 	super._ready()
@@ -47,18 +58,27 @@ func get_target_cell() -> Vector2i:
 	return _registered_cell + Direction.to_vector2i(facing)
 
 
-# 判断当前是否存在尚未落地到地图的待出料 Product。
-func plan_output(beat_index: int, _receives_signal: bool) -> Dictionary:
-	if _pending_output_item_type == "" or beat_index < _output_ready_beat:
+# 判断当前是否存在可立即推出的 Product。
+func plan_output(_beat_index: int, _receives_signal: bool) -> Dictionary:
+	if not _is_working():
+		return {
+			"action": "none",
+		}
+
+	if not _has_valid_held_item():
+		return {
+			"action": "none",
+		}
+
+	if not _held_item.is_product():
 		return {
 			"action": "none",
 		}
 
 	return {
-		"action": "spawn",
+		"action": "release",
 		"target_cell": get_target_cell(),
-		"item_type": _pending_output_item_type,
-		"item_kind": Item.Kind.PRODUCT,
+		"item": _held_item,
 		"flow_direction": facing,
 	}
 
@@ -131,21 +151,26 @@ func _enter_idle_state() -> void:
 	_update_animation()
 
 
+func _play_work_animation_once() -> void:
+	_is_playing_work_once = true
+	_update_animation()
+
+
 func _get_animation_name(state: AnimationState) -> StringName:
 	match state:
 		AnimationState.IDLE:
-			return &"idle"
+			return IDLE_ANIMATION
 		AnimationState.WORK:
-			return &"work"
+			return WORK_ANIMATION
 
-	return &"idle"
+	return IDLE_ANIMATION
 
 
 func _update_animation_speed(target_animation: StringName) -> void:
 	if _animated_sprite == null:
 		return
 
-	if target_animation != &"work":
+	if target_animation != WORK_ANIMATION:
 		_animated_sprite.speed_scale = 1.0
 		return
 
@@ -196,7 +221,7 @@ func _get_animation_base_duration_seconds(animation_name: StringName) -> float:
 # 根据当前是否持有原料或待出料状态切换播放动画。
 func _update_animation() -> void:
 	var target_state: AnimationState = AnimationState.IDLE
-	if _is_working():
+	if _is_working() or _is_playing_work_once:
 		target_state = AnimationState.WORK
 
 	var target_animation: StringName = _get_animation_name(target_state)
@@ -211,10 +236,27 @@ func _update_animation() -> void:
 		_animated_sprite.play()
 
 
+func _on_animation_finished() -> void:
+	if _animated_sprite == null:
+		return
+
+	if _animated_sprite.animation != WORK_ANIMATION:
+		return
+
+	if not _is_playing_work_once:
+		return
+
+	_is_playing_work_once = false
+	if _is_working():
+		return
+
+	_update_animation()
+
+
 func _is_triggered_on_beat(_beat_index: int, receives_signal: bool) -> bool:
 	return receives_signal
 
 
-# idle 直通时沿用 Belt 的隔拍节奏（beat_interval = 2）。
+# idle 直通时使用关卡配置的运输节拍。
 func _should_pass_through_on_beat(beat_index: int) -> bool:
-	return beat_index > 0 and beat_index % 2 == 0
+	return beat_index > 0 and beat_index % transport_beat_interval == 0

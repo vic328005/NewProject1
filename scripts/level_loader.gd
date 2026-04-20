@@ -140,6 +140,8 @@ func _create_press_machine(cell: Vector2i, press_machine_data: Dictionary, world
 	press_machine.facing = Direction.from_name(String(press_machine_data["facing"]))
 	press_machine.cargo_type = String(press_machine_data["cargo_type"])
 	press_machine.beat_interval = int(press_machine_data["beat_interval"])
+	if press_machine_data.has("transport_beat_interval"):
+		press_machine.transport_beat_interval = int(press_machine_data["transport_beat_interval"])
 	return press_machine
 
 
@@ -147,6 +149,8 @@ func _create_packer(cell: Vector2i, packer_data: Dictionary, world: World) -> Pa
 	var packer: Packer = PACKER_SCENE.instantiate() as Packer
 	packer.position = world.cell_to_world(cell)
 	packer.facing = Direction.from_name(String(packer_data["facing"]))
+	if packer_data.has("transport_beat_interval"):
+		packer.transport_beat_interval = int(packer_data["transport_beat_interval"])
 	return packer
 
 func _to_item_kind(kind_name: String) -> Item.Kind:

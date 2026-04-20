@@ -9,7 +9,7 @@
       "y": 8,
       "producer": {
         "facing": "RIGHT",
-        "beat_interval": 3,
+        "beat_interval": 4,
         "production_sequence": [
           "A",
           "B",

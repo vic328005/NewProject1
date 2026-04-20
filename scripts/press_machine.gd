@@ -5,6 +5,7 @@ const PREVIEW_CELL_SIZE: float = 64.0
 const PREVIEW_CENTER: Vector2 = Vector2(PREVIEW_CELL_SIZE * 0.5, PREVIEW_CELL_SIZE * 0.5)
 const DEFAULT_CARGO_TYPE: String = CargoType.DEFAULT
 const DEFAULT_BEAT_INTERVAL: int = 2
+const DEFAULT_TRANSPORT_BEAT_INTERVAL: int = 2
 const ANIMATION_A: StringName = &"A"
 const ANIMATION_B: StringName = &"B"
 const ANIMATION_C: StringName = &"C"
@@ -39,6 +40,10 @@ enum MachineState {
 		_sync_visual_state()
 		_update_animation()
 		queue_redraw()
+
+var transport_beat_interval: int = DEFAULT_TRANSPORT_BEAT_INTERVAL:
+	set(value):
+		transport_beat_interval = clampi(value, 1, 2)
 
 var _pressed_item: Item
 var _press_start_beat: int = -1
@@ -354,6 +359,6 @@ func _is_triggered_on_beat(beat_index: int, receives_signal: bool) -> bool:
 	return should_trigger_on_beat(beat_index)
 
 
-# 未触发时直通沿用 Belt 的隔拍节奏（beat_interval = 2）。
+# 未触发时直通使用关卡配置的运输节拍。
 func _should_pass_through_on_beat(beat_index: int) -> bool:
-	return beat_index > 0 and beat_index % 2 == 0
+	return beat_index > 0 and beat_index % transport_beat_interval == 0

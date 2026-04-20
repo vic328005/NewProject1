@@ -3,20 +3,20 @@
 [ext_resource type="Script" uid="uid://d33nhyqd2je68" path="res://scripts/ui/result_panel.gd" id="1_tcnj8"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_b5swy"]
-bg_color = Color(0.0470588, 0.0627451, 0.117647, 0.82)
-border_color = Color(0.321569, 0.427451, 0.580392, 0.95)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-corner_radius_top_left = 24
-corner_radius_top_right = 24
-corner_radius_bottom_right = 24
-corner_radius_bottom_left = 24
 content_margin_left = 30.0
 content_margin_top = 22.0
 content_margin_right = 30.0
 content_margin_bottom = 22.0
+bg_color = Color(0.0470588, 0.0627451, 0.117647, 0.82)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.321569, 0.427451, 0.580392, 0.95)
+corner_radius_top_left = 24
+corner_radius_top_right = 24
+corner_radius_bottom_right = 24
+corner_radius_bottom_left = 24
 shadow_color = Color(0, 0, 0, 0.22)
 shadow_size = 12
 
@@ -46,10 +46,6 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_constants/margin_left = 72
-theme_override_constants/margin_top = 48
-theme_override_constants/margin_right = 72
-theme_override_constants/margin_bottom = 48
 
 [node name="Content" type="VBoxContainer" parent="SafeArea" unique_id=710918345]
 layout_mode = 2
@@ -59,10 +55,10 @@ theme_override_constants/separation = 26
 alignment = 1
 
 [node name="BannerArea" type="Control" parent="SafeArea/Content" unique_id=873702902]
+clip_contents = true
 custom_minimum_size = Vector2(0, 340)
 layout_mode = 2
 size_flags_horizontal = 3
-clip_contents = true
 
 [node name="BannerRect" type="TextureRect" parent="SafeArea/Content/BannerArea" unique_id=409674806]
 layout_mode = 1

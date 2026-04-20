@@ -89,7 +89,7 @@ func plan_input(_item: Item, _beat_index: int, _receives_signal: bool) -> Dictio
 
 
 # 根据当前输入/输出方向切换动画。
-# 这里不做 rotation / flip，动画名本身就是唯一真相。
+# 直线继续直接选动画，转弯则在基础动画上补旋转角度。
 func _update_sprite_visual() -> void:
 	if _animated_sprite == null:
 		_animated_sprite = get_node_or_null(^"Sprite2D/AnimatedSprite2D") as AnimatedSprite2D
@@ -97,7 +97,9 @@ func _update_sprite_visual() -> void:
 	if _animated_sprite == null:
 		return
 
-	var target_animation: StringName = _get_animation_name()
+	var visual_state: Dictionary = _get_visual_state()
+	var target_animation: StringName = visual_state["animation"]
+	_animated_sprite.rotation_degrees = float(visual_state["rotation_degrees"])
 	if _animated_sprite.animation != target_animation:
 		_animated_sprite.play(target_animation)
 		return
@@ -112,11 +114,17 @@ func _update_sprite_visual() -> void:
 
 
 # 直线与转弯走两套不同命名规则，先在这里做分发。
-func _get_animation_name() -> StringName:
+func _get_visual_state() -> Dictionary:
 	if input_direction == output_direction:
-		return _get_straight_animation_name()
+		return {
+			"animation": _get_straight_animation_name(),
+			"rotation_degrees": 0.0,
+		}
 
-	return _get_turn_animation_name()
+	return {
+		"animation": _get_turn_animation_name(),
+		"rotation_degrees": _get_turn_rotation_degrees(),
+	}
 
 
 # 直线传送带直接按流出方向选择 up/right/down/left。
@@ -147,3 +155,11 @@ func _get_turn_animation_name() -> StringName:
 		suffix = "down"
 
 	return StringName("%s-%s" % [prefix, suffix])
+
+
+# 转弯资源只有两套基础拐角，需要按输入方向补一个旋转角度。
+func _get_turn_rotation_degrees() -> float:
+	if output_direction == Direction.rotate_right(input_direction):
+		return float(int(input_direction) * 90)
+
+	return float(wrapi(int(input_direction) - int(Direction.Value.RIGHT), 0, 4) * 90)

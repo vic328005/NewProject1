@@ -234,26 +234,17 @@ func _update_machine_states(machines: Array[Machine], machine_signal_states: Dic
 
 		if machine is Packer:
 			var packer: Packer = machine as Packer
-			if not packer._is_triggered_on_beat(beat_index, receives_signal):
-				continue
-
 			if not packer._is_working():
 				continue
 
 			if not packer._has_valid_held_item():
 				continue
 
-			if packer._pending_output_item_type != "":
+			if packer._held_item.is_product():
 				continue
 
-			var output_item_type: String = packer._held_item.item_type
-			if packer._held_item != null and is_instance_valid(packer._held_item):
-				packer._held_item.remove_from_world()
-
-			packer._held_item = null
-			packer._pending_output_item_type = output_item_type
-			packer._output_ready_beat = beat_index + 1
-			packer._update_animation()
+			packer._held_item.item_kind = Item.Kind.PRODUCT
+			packer._play_work_animation_once()
 			_play_sfx(AudioController.SFX_PACKER_PACK)
 			continue
 
@@ -460,8 +451,6 @@ func _apply_output_plan(machine: Machine, _plan: Dictionary, _beat_index: int) -
 	if machine is Packer:
 		var packer: Packer = machine as Packer
 		packer._held_item = null
-		packer._pending_output_item_type = ""
-		packer._output_ready_beat = -1
 		packer._enter_idle_state()
 		return
 

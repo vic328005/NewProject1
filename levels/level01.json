@@ -4,8 +4,102 @@
   "failure_beat_limit": 60,
   "cells": [
     {
-      "x": 0,
-      "y": 0,
+      "x": 3,
+      "y": 3,
+      "belt": {
+        "input_direction": "UP",
+        "output_direction": "RIGHT",
+        "beat_interval": 1
+      }
+    },
+    {
+      "x": 4,
+      "y": 3,
+      "belt": {
+        "input_direction": "RIGHT",
+        "output_direction": "RIGHT",
+        "beat_interval": 1
+      },
+      "item": {
+        "kind": "CARGO",
+        "type": "A"
+      }
+    },
+    {
+      "x": 5,
+      "y": 3,
+      "belt": {
+        "input_direction": "RIGHT",
+        "output_direction": "RIGHT",
+        "beat_interval": 1
+      }
+    },
+    {
+      "x": 6,
+      "y": 3,
+      "belt": {
+        "input_direction": "RIGHT",
+        "output_direction": "RIGHT",
+        "beat_interval": 1
+      }
+    },
+    {
+      "x": 7,
+      "y": 3,
+      "belt": {
+        "input_direction": "RIGHT",
+        "output_direction": "DOWN",
+        "beat_interval": 1
+      }
+    },
+    {
+      "x": 7,
+      "y": 4,
+      "belt": {
+        "input_direction": "DOWN",
+        "output_direction": "DOWN",
+        "beat_interval": 1
+      }
+    },
+    {
+      "x": 7,
+      "y": 5,
+      "belt": {
+        "input_direction": "DOWN",
+        "output_direction": "DOWN",
+        "beat_interval": 1
+      }
+    },
+    {
+      "x": 7,
+      "y": 6,
+      "belt": {
+        "input_direction": "DOWN",
+        "output_direction": "DOWN",
+        "beat_interval": 1
+      }
+    },
+    {
+      "x": 7,
+      "y": 7,
+      "belt": {
+        "input_direction": "DOWN",
+        "output_direction": "LEFT",
+        "beat_interval": 1
+      }
+    },
+    {
+      "x": 6,
+      "y": 7,
+      "belt": {
+        "input_direction": "LEFT",
+        "output_direction": "LEFT",
+        "beat_interval": 1
+      }
+    },
+    {
+      "x": 5,
+      "y": 5,
       "recycler": {
         "targets": [
           {
@@ -13,10 +107,60 @@
             "required_count": 1
           }
         ]
-      },
-      "item": {
-        "kind": "PRODUCT",
-        "type": "A"
+      }
+    },
+    {
+      "x": 5,
+      "y": 7,
+      "belt": {
+        "input_direction": "LEFT",
+        "output_direction": "LEFT",
+        "beat_interval": 1
+      }
+    },
+    {
+      "x": 4,
+      "y": 7,
+      "belt": {
+        "input_direction": "LEFT",
+        "output_direction": "LEFT",
+        "beat_interval": 1
+      }
+    },
+    {
+      "x": 3,
+      "y": 7,
+      "belt": {
+        "input_direction": "LEFT",
+        "output_direction": "UP",
+        "beat_interval": 1
+      }
+    },
+    {
+      "x": 3,
+      "y": 6,
+      "belt": {
+        "input_direction": "UP",
+        "output_direction": "UP",
+        "beat_interval": 1
+      }
+    },
+    {
+      "x": 3,
+      "y": 5,
+      "belt": {
+        "input_direction": "UP",
+        "output_direction": "UP",
+        "beat_interval": 1
+      }
+    },
+    {
+      "x": 3,
+      "y": 4,
+      "belt": {
+        "input_direction": "UP",
+        "output_direction": "UP",
+        "beat_interval": 1
       }
     }
   ]

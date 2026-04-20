@@ -15,8 +15,8 @@ const PRODUCER_KEYS := ["facing", "beat_interval", "production_sequence"]
 const RECYCLER_KEYS := ["targets"]
 const RECYCLER_TARGET_KEYS := ["product_type", "required_count"]
 const SIGNAL_TOWER_KEYS: Array = ["max_steps"]
-const PRESS_MACHINE_KEYS := ["facing", "cargo_type", "beat_interval"]
-const PACKER_KEYS := ["facing"]
+const PRESS_MACHINE_KEYS := ["facing", "cargo_type", "beat_interval", "transport_beat_interval"]
+const PACKER_KEYS := ["facing", "transport_beat_interval"]
 const CARGO_TYPE_VALUES: Array[String] = CargoType.VALUES
 const ITEM_KIND_VALUES := ["CARGO", "PRODUCT"]
 const DEFAULT_FAILURE_BEAT_LIMIT: int = 60
@@ -448,11 +448,23 @@ static func _parse_press_machine(raw_press_machine: Dictionary, cell_label: Stri
 	if beat_interval != 1 and beat_interval != 2:
 		return _validation_error(source_label, "%s.beat_interval 只能是 1 或 2" % press_machine_label)
 
-	return {
+	var normalized_press_machine: Dictionary = {
 		"facing": facing,
 		"cargo_type": cargo_type,
 		"beat_interval": beat_interval,
 	}
+
+	if raw_press_machine.has("transport_beat_interval"):
+		if not _has_positive_integer_number(raw_press_machine, "transport_beat_interval"):
+			return _validation_error(source_label, "%s.transport_beat_interval 必须是正整数" % press_machine_label)
+
+		var transport_beat_interval: int = int(raw_press_machine["transport_beat_interval"])
+		if transport_beat_interval != 1 and transport_beat_interval != 2:
+			return _validation_error(source_label, "%s.transport_beat_interval 只能是 1 或 2" % press_machine_label)
+
+		normalized_press_machine["transport_beat_interval"] = transport_beat_interval
+
+	return normalized_press_machine
 
 
 static func _parse_packer(raw_packer: Dictionary, cell_label: String, source_label: String) -> Variant:
@@ -467,9 +479,21 @@ static func _parse_packer(raw_packer: Dictionary, cell_label: String, source_lab
 	if not Direction.is_valid_name(facing):
 		return _validation_error(source_label, "%s.facing 必须是 %s 之一" % [packer_label, Direction.NAMES])
 
-	return {
+	var normalized_packer: Dictionary = {
 		"facing": facing,
 	}
+
+	if raw_packer.has("transport_beat_interval"):
+		if not _has_positive_integer_number(raw_packer, "transport_beat_interval"):
+			return _validation_error(source_label, "%s.transport_beat_interval 必须是正整数" % packer_label)
+
+		var transport_beat_interval: int = int(raw_packer["transport_beat_interval"])
+		if transport_beat_interval != 1 and transport_beat_interval != 2:
+			return _validation_error(source_label, "%s.transport_beat_interval 只能是 1 或 2" % packer_label)
+
+		normalized_packer["transport_beat_interval"] = transport_beat_interval
+
+	return normalized_packer
 
 
 static func _ensure_allowed_keys(raw_data: Dictionary, allowed_keys: Array, label: String, source_label: String) -> bool:

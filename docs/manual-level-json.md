@@ -388,6 +388,7 @@ target 字段规则：
 - `facing`
 - `cargo_type`
 - `beat_interval`
+- `transport_beat_interval`
 
 示例：
 
@@ -396,7 +397,8 @@ target 字段规则：
   "press_machine": {
     "facing": "RIGHT",
     "cargo_type": "B",
-    "beat_interval": 2
+    "beat_interval": 2,
+    "transport_beat_interval": 1
   }
 }
 ```
@@ -406,12 +408,14 @@ target 字段规则：
 - `facing`：必填，非空字符串，只能是 `UP` / `RIGHT` / `DOWN` / `LEFT`
 - `cargo_type`：必填，非空字符串，只能是 `A` / `B` / `C`
 - `beat_interval`：必填，正整数，且只能是 `1` 或 `2`
+- `transport_beat_interval`：可选，正整数，且只能是 `1` 或 `2`
 
 运行语义：
 
 - 压塑机正前方一格是出料目标格
 - 这里的“触发”指当前格子收到信号，且当前拍满足 `beat_interval`
-- 未触发时按直通处理，运输节奏沿用“每 2 拍一次”
+- 未触发时按直通处理；若配置了 `transport_beat_interval`，就按该节拍运输
+- 省略 `transport_beat_interval` 时，直通节奏默认仍是“每 2 拍一次”
 - 触发且空闲时，只接收 `CARGO`
 - 触发但机器正忙时，新进入的 `CARGO` 会被直接销毁
 - 开始压塑后，机器会在内部把持有物体的类型改成 `cargo_type`
@@ -422,13 +426,15 @@ target 字段规则：
 `packer` 必须是 object，当前只允许以下字段：
 
 - `facing`
+- `transport_beat_interval`
 
 示例：
 
 ```json
 {
   "packer": {
-    "facing": "RIGHT"
+    "facing": "RIGHT",
+    "transport_beat_interval": 1
   }
 }
 ```
@@ -436,6 +442,7 @@ target 字段规则：
 字段规则：
 
 - `facing`：必填，非空字符串，只能是 `UP` / `RIGHT` / `DOWN` / `LEFT`
+- `transport_beat_interval`：可选，正整数，且只能是 `1` 或 `2`
 
 运行语义：
 
@@ -445,7 +452,8 @@ target 字段规则：
 - 吃入后内部处理一拍
 - 下一拍出料时，生成同类型的 `PRODUCT`
 - 出料方向由 `facing` 决定
-- 未触发时按直通处理，直通节奏固定为“每 2 拍一次”
+- 未触发时按直通处理；若配置了 `transport_beat_interval`，就按该节拍运输
+- 省略 `transport_beat_interval` 时，直通节奏默认仍是“每 2 拍一次”
 
 ## 当前拍点结算顺序
 
