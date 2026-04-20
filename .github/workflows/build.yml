@@ -26,6 +26,12 @@ jobs:
             export_path: build/windows/NewProject1.exe
             artifact_name: windows-build
             artifact_path: build/windows
+          - label: Linux
+            os: ubuntu-latest
+            preset: Linux
+            export_path: build/linux/NewProject1.x86_64
+            artifact_name: linux-build
+            artifact_path: build/linux
           - label: macOS
             os: macos-latest
             preset: macOS
@@ -83,6 +89,9 @@ jobs:
           cd release-artifacts/windows-build
           zip -r "../../release-files/NewProject1-${VERSION}-windows.zip" .
           cd ../..
+          cd release-artifacts/linux-build
+          zip -r "../../release-files/NewProject1-${VERSION}-linux.zip" .
+          cd ../..
           cp release-artifacts/macos-build/NewProject1.zip "release-files/NewProject1-${VERSION}-macos.zip"
 
       - name: Publish GitHub release
@@ -91,4 +100,5 @@ jobs:
           generate_release_notes: true
           files: |
             release-files/NewProject1-${{ github.ref_name }}-windows.zip
+            release-files/NewProject1-${{ github.ref_name }}-linux.zip
             release-files/NewProject1-${{ github.ref_name }}-macos.zip
