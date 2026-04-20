@@ -14,8 +14,6 @@ var main_layer: MapLayer
 var item_layer: MapLayer
 # 传送带层：处理有序运输设备的每拍行为。
 var belt_layer: MapLayer
-# 分拣机层：记录按信号触发的分拣节点状态。
-var sorter_layer: MapLayer
 # 生产机层：记录生成货物的设备。
 var producer_layer: MapLayer
 # 回收机层：记录回收目标与进度。
@@ -186,7 +184,6 @@ func _init_layers() -> void:
 	main_layer = _create_layer()
 	item_layer = _create_layer()
 	belt_layer = _create_layer()
-	sorter_layer = _create_layer()
 	producer_layer = _create_layer()
 	recycler_layer = _create_layer()
 	signal_tower_layer = _create_layer()
@@ -199,7 +196,6 @@ func _clear_layers() -> void:
 	main_layer.clear()
 	item_layer.clear()
 	belt_layer.clear()
-	sorter_layer.clear()
 	producer_layer.clear()
 	recycler_layer.clear()
 	signal_tower_layer.clear()

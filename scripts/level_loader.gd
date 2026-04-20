@@ -2,7 +2,6 @@ class_name LevelLoader
 extends RefCounted
 
 const BELT_SCENE := preload("res://prefabs/belt.tscn")
-const SORTER_SCENE: PackedScene = preload("res://prefabs/sorter.tscn")
 const CARGO_SCENE := preload("res://prefabs/cargo.tscn")
 const PRODUCER_SCENE := preload("res://prefabs/producer.tscn")
 const RECYCLER_SCENE := preload("res://prefabs/recycler.tscn")
@@ -41,11 +40,6 @@ func apply_level_data_to_world(level_data: LevelData, world: World) -> bool:
 			var belt_data: Dictionary = Dictionary(cell_data["belt"])
 			var belt: Belt = _create_belt(cell, belt_data, world)
 			world.add_level_content(belt)
-
-		if cell_data.has("sorter"):
-			var sorter_data: Dictionary = Dictionary(cell_data["sorter"])
-			var sorter: Sorter = _create_sorter(cell, sorter_data, world)
-			world.add_level_content(sorter)
 
 		if cell_data.has("producer"):
 			var producer_data: Dictionary = Dictionary(cell_data["producer"])
@@ -87,14 +81,6 @@ func _create_belt(cell: Vector2i, belt_data: Dictionary, world: World) -> Belt:
 	belt.turn_mode = _to_belt_turn_mode(String(belt_data["turn_mode"]))
 	belt.beat_interval = int(belt_data["beat_interval"])
 	return belt
-
-
-func _create_sorter(cell: Vector2i, sorter_data: Dictionary, world: World) -> Sorter:
-	var sorter: Sorter = SORTER_SCENE.instantiate() as Sorter
-	sorter.position = world.cell_to_world(cell)
-	sorter.input_direction = Direction.from_name(String(sorter_data["input_direction"]))
-	sorter.initial_output_side = _to_sorter_output_side(String(sorter_data["initial_output_side"]))
-	return sorter
 
 
 func _create_cargo(cell: Vector2i, cargo_data: Dictionary, world: World) -> Cargo:
@@ -152,11 +138,3 @@ func _to_belt_turn_mode(turn_mode_name: String) -> Belt.TurnMode:
 			return Belt.TurnMode.RIGHT
 		_:
 			return Belt.TurnMode.STRAIGHT
-
-
-func _to_sorter_output_side(side_name: String) -> Sorter.OutputSide:
-	match side_name:
-		"RIGHT":
-			return Sorter.OutputSide.RIGHT
-		_:
-			return Sorter.OutputSide.LEFT

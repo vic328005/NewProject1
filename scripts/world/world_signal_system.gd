@@ -1,7 +1,6 @@
 class_name WorldSignalSystem
 extends RefCounted
 
-const TRIGGERED_SORTERS_KEY: StringName = &"sorters"
 const TRIGGERED_PRESS_MACHINES_KEY: StringName = &"press_machines"
 const TRIGGERED_PACKERS_KEY: StringName = &"packers"
 
@@ -28,7 +27,6 @@ func begin_beat(beat_index: int) -> Dictionary:
 	_advance_active_signals(beat_index)
 	_merge_pending_signals()
 	return {
-		TRIGGERED_SORTERS_KEY: _collect_triggered_sorters(),
 		TRIGGERED_PRESS_MACHINES_KEY: _collect_triggered_press_machines(),
 		TRIGGERED_PACKERS_KEY: _collect_triggered_packers(),
 	}
@@ -89,27 +87,6 @@ func try_emit_for_current_beat() -> bool:
 
 	_last_signal_emit_beat_index = current_beat_index
 	return true
-
-
-# 收集当前生效信号波命中的分拣机，仅保留同一拍有效目标。
-func _collect_triggered_sorters() -> Dictionary:
-	var triggered_sorters: Dictionary = {}
-
-	# 信号波按覆盖到的格子触发设备，设备类型各自独立收集。
-	for signal_wave in _active_signals:
-		if signal_wave == null or not is_instance_valid(signal_wave):
-			continue
-
-		var wave_cells: Array[Vector2i] = signal_wave.get_wave_cells()
-		for cell in wave_cells:
-			var sorter: Sorter = _world.sorter_layer.get_cell(cell) as Sorter
-			if sorter == null or not is_instance_valid(sorter):
-				continue
-
-			triggered_sorters[cell] = sorter
-
-	return triggered_sorters
-
 
 # 收集当前生效信号波命中的压机节点。
 func _collect_triggered_press_machines() -> Dictionary:
