@@ -8,7 +8,7 @@
       "y": 8,
       "producer": {
         "facing": "RIGHT",
-        "beat_interval": 2,
+        "beat_interval": 5,
         "production_sequence": [
           "A",
           "B",

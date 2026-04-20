@@ -48,11 +48,8 @@ func can_accept_product(target_product_type: String) -> bool:
 	return int(_target_states[target_index]["remaining_count"]) > 0
 
 
-func collect_product(target_product: Item) -> bool:
-	if target_product == null or not is_instance_valid(target_product) or not target_product.is_product():
-		return false
-
-	var normalized_product_type: String = CargoType.normalize(target_product.item_type)
+func collect_product(product_type: String) -> bool:
+	var normalized_product_type: String = CargoType.normalize(product_type)
 	var target_index: int = _find_target_index(normalized_product_type)
 	if target_index == -1:
 		return false
@@ -63,7 +60,6 @@ func collect_product(target_product: Item) -> bool:
 		return false
 
 	var was_completed: bool = is_completed()
-	target_product.remove_from_world()
 	target_status["remaining_count"] = remaining_count - 1
 	target_status["completed_count"] = int(target_status["required_count"]) - int(target_status["remaining_count"])
 	target_status["is_completed"] = int(target_status["remaining_count"]) <= 0
@@ -84,35 +80,43 @@ func log_cargo_destroyed(cargo_type: String) -> void:
 	_log_status("destroy_cargo", CargoType.normalize(cargo_type))
 
 
-func output(_beat_index: int) -> Dictionary:
+func plan_output(_beat_index: int, _receives_signal: bool) -> Dictionary:
 	return {
 		"action": "none",
 	}
 
 
-func input(item: Item, _beat_index: int) -> String:
-	if item == null or not is_instance_valid(item):
-		return "reject"
-
-	if item.is_product() and can_accept_product(item.item_type):
-		collect_product(item)
-		return "destroy"
-
-	if item.is_cargo():
-		log_cargo_destroyed(item.item_type)
-
-	item.remove_from_world()
-	return "destroy"
-
-
-func transport(_item: Item, _beat_index: int) -> Dictionary:
+func plan_transport(_item: Item, _beat_index: int, _receives_signal: bool) -> Dictionary:
 	return {
 		"action": "block",
 	}
 
 
-func start(_beat_index: int) -> void:
-	pass
+func plan_input(item: Item, _beat_index: int, _receives_signal: bool) -> Dictionary:
+	if item == null or not is_instance_valid(item):
+		return {
+			"action": "reject",
+		}
+
+	if item.is_product() and can_accept_product(item.item_type):
+		return {
+			"action": "destroy",
+			"product_type": CargoType.normalize(item.item_type),
+			"counts_as_goal": true,
+		}
+
+	if item.is_cargo():
+		return {
+			"action": "destroy",
+			"cargo_type": CargoType.normalize(item.item_type),
+			"counts_as_goal": false,
+		}
+
+	return {
+		"action": "destroy",
+		"product_type": CargoType.normalize(item.item_type),
+		"counts_as_goal": false,
+	}
 
 
 func get_total_required_count() -> int:

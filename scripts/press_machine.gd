@@ -31,7 +31,6 @@ const SHAPE_COLOR_3: Color = Color(0.62, 0.56, 0.98, 1.0)
 
 var _pressed_item: Item
 var _press_start_beat: int = -1
-var _is_pressing: bool = false
 var _output_ready_beat: int = -1
 var _sprite: Sprite2D
 
@@ -54,14 +53,13 @@ func should_trigger_on_beat(beat_index: int) -> bool:
 	return beat_index > 0 and beat_index % beat_interval == 0
 
 
-func output(beat_index: int) -> Dictionary:
-	_refresh_output_state(beat_index)
+func plan_output(beat_index: int, _receives_signal: bool) -> Dictionary:
 	if not _has_valid_pressed_item():
 		return {
 			"action": "none",
 		}
 
-	if _is_pressing or _output_ready_beat < 0 or beat_index < _output_ready_beat:
+	if _output_ready_beat < 0 or beat_index < _output_ready_beat:
 		return {
 			"action": "none",
 		}
@@ -71,39 +69,16 @@ func output(beat_index: int) -> Dictionary:
 		"target_cell": get_target_cell(),
 		"item": _pressed_item,
 		"flow_direction": facing,
-		"on_success": Callable(self, "clear_pressed_item"),
 	}
 
 
-func input(item: Item, beat_index: int) -> String:
-	if item == null or not is_instance_valid(item):
-		return "reject"
-
-	if not item.is_cargo():
-		return "reject"
-
-	if not _is_triggered_on_beat(beat_index):
-		return "reject"
-
-	if _has_valid_pressed_item():
-		return "reject"
-
-	item.store_in_machine(global_position)
-	_pressed_item = item
-	_press_start_beat = -1
-	_output_ready_beat = -1
-	_is_pressing = false
-	return "accept"
-
-
-func transport(item: Item, beat_index: int) -> Dictionary:
-	_refresh_output_state(beat_index)
+func plan_transport(item: Item, beat_index: int, receives_signal: bool) -> Dictionary:
 	if _has_valid_pressed_item():
 		return {
 			"action": "block",
 		}
 
-	if item.is_cargo() and _is_triggered_on_beat(beat_index):
+	if item.is_cargo() and _is_triggered_on_beat(beat_index, receives_signal):
 		return {
 			"action": "block",
 		}
@@ -115,28 +90,36 @@ func transport(item: Item, beat_index: int) -> Dictionary:
 	}
 
 
-func start(beat_index: int) -> void:
-	_refresh_output_state(beat_index)
-	if not _is_triggered_on_beat(beat_index):
-		return
+func plan_input(item: Item, beat_index: int, receives_signal: bool) -> Dictionary:
+	if item == null or not is_instance_valid(item):
+		return {
+			"action": "reject",
+		}
 
-	if not _has_valid_pressed_item():
-		return
+	if not item.is_cargo():
+		return {
+			"action": "reject",
+		}
 
-	if _is_pressing or _output_ready_beat >= 0:
-		return
+	if not _is_triggered_on_beat(beat_index, receives_signal):
+		return {
+			"action": "reject",
+		}
 
-	_press_start_beat = beat_index
-	_output_ready_beat = beat_index + 1
-	_is_pressing = true
-	_pressed_item.item_type = cargo_type
+	if _has_valid_pressed_item():
+		return {
+			"action": "reject",
+		}
+
+	return {
+		"action": "accept",
+	}
 
 
 func clear_pressed_item() -> void:
 	_pressed_item = null
 	_press_start_beat = -1
 	_output_ready_beat = -1
-	_is_pressing = false
 
 
 func _should_register_to_machine_layer() -> bool:
@@ -145,22 +128,6 @@ func _should_register_to_machine_layer() -> bool:
 
 func _has_valid_pressed_item() -> bool:
 	return _pressed_item != null and is_instance_valid(_pressed_item)
-
-
-func _has_invalid_pressed_item() -> bool:
-	return _pressed_item != null and not is_instance_valid(_pressed_item)
-
-
-func _refresh_output_state(beat_index: int) -> void:
-	if _has_invalid_pressed_item():
-		clear_pressed_item()
-		return
-
-	if not _has_valid_pressed_item():
-		return
-
-	if _is_pressing and _output_ready_beat >= 0 and beat_index >= _output_ready_beat:
-		_is_pressing = false
 
 
 func _update_sprite_visual() -> void:
@@ -239,11 +206,8 @@ func _get_shape_color() -> Color:
 			return SHAPE_COLOR_1
 
 
-func _is_triggered_on_beat(beat_index: int) -> bool:
-	if _world == null:
-		return false
-
-	if not _world.signal_layer.has_cell(_registered_cell):
+func _is_triggered_on_beat(beat_index: int, receives_signal: bool) -> bool:
+	if not receives_signal:
 		return false
 
 	return should_trigger_on_beat(beat_index)

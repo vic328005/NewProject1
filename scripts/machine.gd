@@ -30,27 +30,25 @@ func get_target_cell() -> Vector2i:
 	return _registered_cell
 
 
-func output(_beat_index: int) -> Dictionary:
-	assert(false, "%s must implement output()." % get_script().resource_path)
+func plan_output(_beat_index: int, _receives_signal: bool) -> Dictionary:
+	assert(false, "%s must implement plan_output()." % get_script().resource_path)
 	return {
 		"action": "none",
 	}
 
 
-func input(_item: Item, _beat_index: int) -> String:
-	assert(false, "%s must implement input()." % get_script().resource_path)
-	return "reject"
-
-
-func transport(_item: Item, _beat_index: int) -> Dictionary:
-	assert(false, "%s must implement transport()." % get_script().resource_path)
+func plan_transport(_item: Item, _beat_index: int, _receives_signal: bool) -> Dictionary:
+	assert(false, "%s must implement plan_transport()." % get_script().resource_path)
 	return {
 		"action": "block",
 	}
 
 
-func start(_beat_index: int) -> void:
-	assert(false, "%s must implement start()." % get_script().resource_path)
+func plan_input(_item: Item, _beat_index: int, _receives_signal: bool) -> Dictionary:
+	assert(false, "%s must implement plan_input()." % get_script().resource_path)
+	return {
+		"action": "reject",
+	}
 
 
 func _should_register_to_machine_layer() -> bool:

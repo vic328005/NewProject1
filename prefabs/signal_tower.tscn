@@ -1,13 +1,43 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://cnmn8qgrj0yeq"]
 
-[ext_resource type="Script" path="res://scripts/signal_tower.gd" id="1_signal_tower"]
-[ext_resource type="Texture2D" path="res://assets/images/unit_white.png" id="2_signal_tower_texture"]
+[ext_resource type="Script" uid="uid://raqnqnrgcjgl" path="res://scripts/signal_tower.gd" id="1_signal_tower"]
+[ext_resource type="Texture2D" uid="uid://by3tjlkds7te2" path="res://assets/images/animations/tower/tower1.png" id="3_jjg4l"]
+[ext_resource type="Texture2D" uid="uid://c8fpggyoqvtsw" path="res://assets/images/animations/tower/tower2.png" id="4_v07ru"]
+[ext_resource type="Texture2D" uid="uid://1d4g36x5qxc0" path="res://assets/images/animations/tower/tower3.png" id="5_oilqi"]
+[ext_resource type="Texture2D" uid="uid://c7k7fp2yngglj" path="res://assets/images/animations/tower/tower4.png" id="6_7rkvx"]
+[ext_resource type="Texture2D" uid="uid://b1ndxak40j7dt" path="res://assets/images/animations/tower/tower5.png" id="7_kijg0"]
+[ext_resource type="Texture2D" uid="uid://cq55nau178r2y" path="res://assets/images/animations/tower/tower6.png" id="8_8i2x8"]
 
-[node name="SignalTower" type="Node2D"]
+[sub_resource type="SpriteFrames" id="SpriteFrames_hy8oi"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("3_jjg4l")
+}, {
+"duration": 1.0,
+"texture": ExtResource("4_v07ru")
+}, {
+"duration": 1.0,
+"texture": ExtResource("5_oilqi")
+}, {
+"duration": 1.0,
+"texture": ExtResource("6_7rkvx")
+}, {
+"duration": 1.0,
+"texture": ExtResource("7_kijg0")
+}, {
+"duration": 1.0,
+"texture": ExtResource("8_8i2x8")
+}],
+"loop": true,
+"name": &"idle",
+"speed": 5.0
+}]
+
+[node name="SignalTower" type="Node2D" unique_id=915898262]
 script = ExtResource("1_signal_tower")
 
-[node name="Sprite2D" type="Sprite2D" parent="."]
-modulate = Color(0.913726, 0.401961, 0.270588, 1)
-z_index = 1
-position = Vector2(32, 32)
-texture = ExtResource("2_signal_tower_texture")
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="." unique_id=1687068175]
+position = Vector2(32, 0)
+sprite_frames = SubResource("SpriteFrames_hy8oi")
+animation = &"idle"

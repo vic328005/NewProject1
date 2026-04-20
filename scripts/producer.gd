@@ -1,15 +1,15 @@
 extends Machine
 class_name Producer
 
-@export var facing: Direction.Value = Direction.Value.RIGHT:
+var facing: Direction.Value = Direction.Value.RIGHT:
 	set(value):
 		facing = value
 
-@export_range(1, 16, 1) var beat_interval: int = 2:
+var beat_interval: int = 2:
 	set(value):
 		beat_interval = maxi(value, 1)
 
-@export var production_sequence: Array[String] = []:
+var production_sequence: Array[String] = []:
 	set(value):
 		production_sequence = _normalize_production_sequence(value)
 		_next_production_index = 0
@@ -40,7 +40,7 @@ func mark_produced() -> void:
 	_next_production_index += 1
 
 
-func output(beat_index: int) -> Dictionary:
+func plan_output(beat_index: int, _receives_signal: bool) -> Dictionary:
 	if _pending_output_cargo_type == "" or beat_index < _output_ready_beat:
 		return {
 			"action": "none",
@@ -52,33 +52,19 @@ func output(beat_index: int) -> Dictionary:
 		"item_type": _pending_output_cargo_type,
 		"item_kind": Item.Kind.CARGO,
 		"flow_direction": facing,
-		"on_success": Callable(self, "_commit_output_success"),
 	}
 
 
-func input(_item: Item, _beat_index: int) -> String:
-	return "reject"
-
-
-func transport(_item: Item, _beat_index: int) -> Dictionary:
+func plan_transport(_item: Item, _beat_index: int, _receives_signal: bool) -> Dictionary:
 	return {
 		"action": "block",
 	}
 
 
-func start(beat_index: int) -> void:
-	if not should_trigger_on_beat(beat_index):
-		return
-
-	if not has_remaining_production():
-		return
-
-	if _pending_output_cargo_type != "":
-		return
-
-	_pending_output_cargo_type = get_next_cargo_type()
-	_output_ready_beat = beat_index + 1
-	mark_produced()
+func plan_input(_item: Item, _beat_index: int, _receives_signal: bool) -> Dictionary:
+	return {
+		"action": "reject",
+	}
 
 
 func _normalize_production_sequence(value: Array) -> Array[String]:
@@ -87,8 +73,3 @@ func _normalize_production_sequence(value: Array) -> Array[String]:
 		normalized_sequence.append(CargoType.normalize(cargo_type))
 
 	return normalized_sequence
-
-
-func _commit_output_success() -> void:
-	_pending_output_cargo_type = ""
-	_output_ready_beat = -1

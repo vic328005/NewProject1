@@ -12,8 +12,6 @@ const TRANSPORT_ACTION_BLOCK: String = "block"
 const TRANSPORT_ACTION_MOVE: String = "move"
 const ITEM_RESULT_STAY: String = "stay"
 const ITEM_RESULT_MOVE: String = "move"
-const ITEM_RESULT_ACCEPT: String = "accept"
-const ITEM_RESULT_DESTROY: String = "destroy"
 
 var _world: World
 
@@ -26,16 +24,25 @@ func _init(world: World) -> void:
 
 ## 执行一次完整拍点结算。
 func resolve_beat(beat_index: int) -> void:
-	_update_signal_waves(beat_index)
+	
 
 	var machines: Array[Machine] = _collect_machines()
-	_start_machines(machines, beat_index)
-	var output_intents: Array[Dictionary] = _collect_output_intents(machines, beat_index)
-
+	var machine_signal_states: Dictionary = _collect_machine_signal_states(machines)
 	var item_snapshot: Dictionary = _collect_item_snapshot()
-	var item_results: Dictionary = _resolve_items(item_snapshot, beat_index)
-	_commit_items(item_results, beat_index)
-	_commit_outputs(output_intents, beat_index)
+	var input_results: Dictionary = _plan_inputs(item_snapshot, machine_signal_states, beat_index)
+
+	_commit_inputs(input_results, beat_index)
+	_update_machine_states(machines, machine_signal_states, beat_index)
+
+	var output_item_snapshot: Dictionary = _collect_item_snapshot()
+	var output_results: Array[Dictionary] = _plan_outputs(machines, machine_signal_states, output_item_snapshot, beat_index)
+	var output_reserved_cells: Dictionary = _collect_output_reserved_cells(output_results)
+	_commit_outputs(output_results, beat_index)
+
+	var transport_results: Dictionary = _plan_transports(item_snapshot, machine_signal_states, output_reserved_cells, input_results, beat_index)
+	_commit_moves(transport_results, beat_index)
+	_mark_remaining_items_resolved(item_snapshot, transport_results, input_results, beat_index)
+	_update_signal_waves(beat_index)
 
 
 func _update_signal_waves(beat_index: int) -> void:
@@ -67,29 +74,6 @@ func _collect_machines() -> Array[Machine]:
 	return machines
 
 
-func _start_machines(machines: Array[Machine], beat_index: int) -> void:
-	for machine in machines:
-		machine.start(beat_index)
-
-
-func _collect_output_intents(machines: Array[Machine], beat_index: int) -> Array[Dictionary]:
-	var intents: Array[Dictionary] = []
-	for machine in machines:
-		var output_intent: Dictionary = machine.output(beat_index)
-		var action: String = String(output_intent.get("action", OUTPUT_ACTION_NONE))
-		assert(
-			action == OUTPUT_ACTION_NONE or action == OUTPUT_ACTION_SPAWN or action == OUTPUT_ACTION_RELEASE,
-			"Unsupported machine output action: %s" % action
-		)
-
-		if action == OUTPUT_ACTION_NONE:
-			continue
-
-		intents.append(output_intent)
-
-	return intents
-
-
 func _collect_item_snapshot() -> Dictionary:
 	var item_snapshot: Dictionary = {}
 	var item_cells: Dictionary = _world.item_layer.get_cells()
@@ -103,65 +87,198 @@ func _collect_item_snapshot() -> Dictionary:
 	return item_snapshot
 
 
-func _resolve_items(item_snapshot: Dictionary, beat_index: int) -> Dictionary:
-	var item_results: Dictionary = {}
+func _collect_machine_signal_states(machines: Array[Machine]) -> Dictionary:
+	var machine_signal_states: Dictionary = {}
+	for machine in machines:
+		machine_signal_states[machine] = _world.signal_layer.has_cell(machine.get_registered_cell())
+
+	return machine_signal_states
+
+
+func _plan_outputs(machines: Array[Machine], machine_signal_states: Dictionary, item_snapshot: Dictionary, beat_index: int) -> Array[Dictionary]:
+	var candidate_results: Array[Dictionary] = []
+	var target_counts: Dictionary = {}
+	for machine in machines:
+		var receives_signal: bool = bool(machine_signal_states.get(machine, false))
+		var plan: Dictionary = machine.plan_output(beat_index, receives_signal)
+		var action: String = String(plan.get("action", OUTPUT_ACTION_NONE))
+		assert(
+			action == OUTPUT_ACTION_NONE or action == OUTPUT_ACTION_SPAWN or action == OUTPUT_ACTION_RELEASE,
+			"Unsupported machine output action: %s" % action
+		)
+
+		if action == OUTPUT_ACTION_NONE:
+			continue
+
+		assert(plan.has("target_cell"), "Output plan must contain target_cell.")
+		var target_cell: Vector2i = plan["target_cell"]
+		target_counts[target_cell] = int(target_counts.get(target_cell, 0)) + 1
+		candidate_results.append({
+			"machine": machine,
+			"plan": plan,
+		})
+
+	var output_results: Array[Dictionary] = []
+	for output_result in candidate_results:
+		var plan: Dictionary = output_result["plan"]
+		var target_cell: Vector2i = plan["target_cell"]
+		if int(target_counts[target_cell]) > 1:
+			continue
+
+		if item_snapshot.has(target_cell):
+			continue
+
+		output_results.append(output_result)
+
+	return output_results
+
+
+func _collect_output_reserved_cells(output_results: Array[Dictionary]) -> Dictionary:
+	var reserved_cells: Dictionary = {}
+	for output_result in output_results:
+		var plan: Dictionary = output_result["plan"]
+		var target_cell: Vector2i = plan["target_cell"]
+		reserved_cells[target_cell] = true
+
+	return reserved_cells
+
+
+func _plan_transports(item_snapshot: Dictionary, machine_signal_states: Dictionary, output_reserved_cells: Dictionary, input_results: Dictionary, beat_index: int) -> Dictionary:
+	var transport_results: Dictionary = {}
 	for cell in item_snapshot.keys():
 		var item: Item = item_snapshot[cell] as Item
 		if item == null or not is_instance_valid(item):
 			continue
 
+		if input_results.has(item):
+			continue
+
 		var result: Dictionary = {
 			"action": ITEM_RESULT_STAY,
-			"cell": cell,
 		}
 		var machine: Machine = _world.get_machine(cell)
 		if machine == null or not is_instance_valid(machine):
-			item_results[item] = result
+			transport_results[item] = result
 			continue
 
-		var input_action: String = machine.input(item, beat_index)
+		var receives_signal: bool = bool(machine_signal_states.get(machine, false))
+		var plan: Dictionary = machine.plan_transport(item, beat_index, receives_signal)
+		var action: String = String(plan.get("action", TRANSPORT_ACTION_BLOCK))
 		assert(
-			input_action == INPUT_ACTION_REJECT or input_action == INPUT_ACTION_ACCEPT or input_action == INPUT_ACTION_DESTROY,
-			"Unsupported machine input action: %s" % input_action
+			action == TRANSPORT_ACTION_BLOCK or action == TRANSPORT_ACTION_MOVE,
+			"Unsupported machine transport action: %s" % action
 		)
 
-		if input_action == INPUT_ACTION_ACCEPT:
-			item.mark_resolved_on_beat(beat_index)
-			result["action"] = ITEM_RESULT_ACCEPT
-			item_results[item] = result
+		if action == TRANSPORT_ACTION_MOVE:
+			assert(plan.has("target_cell"), "Transport plan must contain target_cell.")
+			var target_cell: Vector2i = plan["target_cell"]
+			if not output_reserved_cells.has(target_cell):
+				result["action"] = ITEM_RESULT_MOVE
+				result["target_cell"] = target_cell
+				result["flow_direction"] = plan["flow_direction"]
+
+		transport_results[item] = result
+
+	_resolve_parallel_move_results(item_snapshot, transport_results)
+	return transport_results
+
+
+func _plan_inputs(item_snapshot: Dictionary, machine_signal_states: Dictionary, beat_index: int) -> Dictionary:
+	var input_results: Dictionary = {}
+	for cell in item_snapshot.keys():
+		var item: Item = item_snapshot[cell] as Item
+		if item == null or not is_instance_valid(item):
 			continue
 
-		if input_action == INPUT_ACTION_DESTROY:
-			if is_instance_valid(item):
-				item.mark_resolved_on_beat(beat_index)
-
-			result["action"] = ITEM_RESULT_DESTROY
-			item_results[item] = result
+		var machine: Machine = _world.get_machine(cell)
+		if machine == null or not is_instance_valid(machine):
 			continue
 
-		var transport_result: Dictionary = machine.transport(item, beat_index)
-		var transport_action: String = String(transport_result.get("action", TRANSPORT_ACTION_BLOCK))
+		var receives_signal: bool = bool(machine_signal_states.get(machine, false))
+		var plan: Dictionary = machine.plan_input(item, beat_index, receives_signal)
+		var action: String = String(plan.get("action", INPUT_ACTION_REJECT))
 		assert(
-			transport_action == TRANSPORT_ACTION_BLOCK or transport_action == TRANSPORT_ACTION_MOVE,
-			"Unsupported machine transport action: %s" % transport_action
+			action == INPUT_ACTION_REJECT or action == INPUT_ACTION_ACCEPT or action == INPUT_ACTION_DESTROY,
+			"Unsupported machine input action: %s" % action
 		)
 
-		if transport_action == TRANSPORT_ACTION_MOVE:
-			result["action"] = ITEM_RESULT_MOVE
-			result["target_cell"] = transport_result["target_cell"]
-			result["flow_direction"] = transport_result["flow_direction"]
+		if action == INPUT_ACTION_REJECT:
+			continue
 
-		item_results[item] = result
+		input_results[item] = {
+			"machine": machine,
+			"plan": plan,
+		}
 
-	_resolve_parallel_move_results(item_snapshot, item_results)
-	return item_results
+	return input_results
 
 
-func _resolve_parallel_move_results(item_snapshot: Dictionary, item_results: Dictionary) -> void:
+func _update_machine_states(machines: Array[Machine], machine_signal_states: Dictionary, beat_index: int) -> void:
+	for machine in machines:
+		var receives_signal: bool = bool(machine_signal_states.get(machine, false))
+		if machine is Producer:
+			var producer: Producer = machine as Producer
+			if not producer.should_trigger_on_beat(beat_index):
+				continue
+
+			if not producer.has_remaining_production():
+				continue
+
+			if producer._pending_output_cargo_type != "":
+				continue
+
+			producer._pending_output_cargo_type = producer.get_next_cargo_type()
+			producer._output_ready_beat = beat_index + 1
+			producer.mark_produced()
+			continue
+
+		if machine is Packer:
+			var packer: Packer = machine as Packer
+			if not packer._is_triggered_on_beat(beat_index, receives_signal):
+				continue
+
+			if not packer._is_working():
+				continue
+
+			if not packer._has_valid_held_item():
+				continue
+
+			if packer._pending_output_item_type != "":
+				continue
+
+			var output_item_type: String = packer._held_item.item_type
+			if packer._held_item != null and is_instance_valid(packer._held_item):
+				packer._held_item.remove_from_world()
+
+			packer._held_item = null
+			packer._pending_output_item_type = output_item_type
+			packer._output_ready_beat = beat_index + 1
+			packer._update_animation()
+			continue
+
+		if machine is PressMachine:
+			var press_machine: PressMachine = machine as PressMachine
+			if not press_machine._is_triggered_on_beat(beat_index, receives_signal):
+				continue
+
+			if not press_machine._has_valid_pressed_item():
+				continue
+
+			if press_machine._output_ready_beat >= 0:
+				continue
+
+			if press_machine._pressed_item != null and is_instance_valid(press_machine._pressed_item):
+				press_machine._pressed_item.item_type = press_machine.cargo_type
+
+			press_machine._press_start_beat = beat_index
+			press_machine._output_ready_beat = beat_index + 1
+
+
+func _resolve_parallel_move_results(item_snapshot: Dictionary, transport_results: Dictionary) -> void:
 	var target_counts: Dictionary = {}
 	var valid_move_items: Dictionary = {}
-	for item in item_results.keys():
-		var result: Dictionary = item_results[item]
+	for item in transport_results.keys():
+		var result: Dictionary = transport_results[item]
 		if String(result["action"]) != ITEM_RESULT_MOVE:
 			continue
 
@@ -170,7 +287,7 @@ func _resolve_parallel_move_results(item_snapshot: Dictionary, item_results: Dic
 		valid_move_items[item] = true
 
 	for item in valid_move_items.keys():
-		var result: Dictionary = item_results[item]
+		var result: Dictionary = transport_results[item]
 		var target_cell: Vector2i = result["target_cell"]
 		if int(target_counts[target_cell]) > 1:
 			valid_move_items[item] = false
@@ -182,20 +299,20 @@ func _resolve_parallel_move_results(item_snapshot: Dictionary, item_results: Dic
 			if not bool(valid_move_items[item]):
 				continue
 
-			var result: Dictionary = item_results[item]
+			var result: Dictionary = transport_results[item]
 			var target_cell: Vector2i = result["target_cell"]
 			var target_item: Item = item_snapshot.get(target_cell) as Item
 			if target_item == null or not is_instance_valid(target_item) or target_item == item:
 				continue
 
-			if _is_item_vacating(target_item, item_results, valid_move_items):
+			if _is_item_vacating(target_item, transport_results, valid_move_items):
 				continue
 
 			valid_move_items[item] = false
 			changed = true
 
-	for item in item_results.keys():
-		var result: Dictionary = item_results[item]
+	for item in transport_results.keys():
+		var result: Dictionary = transport_results[item]
 		if String(result["action"]) != ITEM_RESULT_MOVE:
 			continue
 
@@ -204,36 +321,64 @@ func _resolve_parallel_move_results(item_snapshot: Dictionary, item_results: Dic
 
 		result["action"] = ITEM_RESULT_STAY
 		result.erase("target_cell")
-		item_results[item] = result
+		result.erase("flow_direction")
+		transport_results[item] = result
 
 
-func _is_item_vacating(item: Item, item_results: Dictionary, valid_move_items: Dictionary) -> bool:
-	var result: Dictionary = item_results.get(item, {})
-	var action: String = String(result.get("action", ITEM_RESULT_STAY))
-	if action == ITEM_RESULT_ACCEPT or action == ITEM_RESULT_DESTROY:
-		return true
-
-	if action != ITEM_RESULT_MOVE:
+func _is_item_vacating(item: Item, transport_results: Dictionary, valid_move_items: Dictionary) -> bool:
+	var result: Dictionary = transport_results.get(item, {})
+	if String(result.get("action", ITEM_RESULT_STAY)) != ITEM_RESULT_MOVE:
 		return false
 
 	return bool(valid_move_items.get(item, false))
 
 
-func _commit_items(item_results: Dictionary, beat_index: int) -> void:
-	var successful_moves: Array[Dictionary] = []
-	for item in item_results.keys():
-		var result: Dictionary = item_results[item]
-		var action: String = String(result["action"])
-		if action == ITEM_RESULT_MOVE:
-			successful_moves.append({
-				"item": item,
-				"target_cell": result["target_cell"],
-				"flow_direction": result["flow_direction"],
-			})
+func _commit_outputs(output_results: Array[Dictionary], beat_index: int) -> void:
+	for output_result in output_results:
+		var machine: Machine = output_result["machine"] as Machine
+		if machine == null or not is_instance_valid(machine):
 			continue
 
-		if is_instance_valid(item):
-			item.mark_resolved_on_beat(beat_index)
+		var plan: Dictionary = output_result["plan"]
+		var action: String = String(plan["action"])
+		if action == OUTPUT_ACTION_SPAWN:
+			var spawned_item: Item = _world.spawn_item(
+				plan["target_cell"],
+				String(plan["item_type"]),
+				plan["item_kind"],
+				plan["flow_direction"]
+			)
+			if spawned_item == null:
+				continue
+
+			spawned_item.mark_resolved_on_beat(beat_index)
+			_apply_output_plan(machine, plan, beat_index)
+			continue
+
+		if action == OUTPUT_ACTION_RELEASE:
+			var released_item: Item = plan["item"] as Item
+			if released_item == null or not is_instance_valid(released_item):
+				continue
+
+			if not released_item.deploy_from_machine(plan["target_cell"], plan["flow_direction"]):
+				continue
+
+			released_item.mark_resolved_on_beat(beat_index)
+			_apply_output_plan(machine, plan, beat_index)
+
+
+func _commit_moves(transport_results: Dictionary, beat_index: int) -> void:
+	var successful_moves: Array[Dictionary] = []
+	for item in transport_results.keys():
+		var result: Dictionary = transport_results[item]
+		if String(result["action"]) != ITEM_RESULT_MOVE:
+			continue
+
+		successful_moves.append({
+			"item": item,
+			"target_cell": result["target_cell"],
+			"flow_direction": result["flow_direction"],
+		})
 
 	for move_result in successful_moves:
 		var item: Item = move_result["item"] as Item
@@ -247,62 +392,99 @@ func _commit_items(item_results: Dictionary, beat_index: int) -> void:
 		if item == null or not is_instance_valid(item):
 			continue
 
-		var target_cell: Vector2i = move_result["target_cell"]
-		var flow_direction: Direction.Value = move_result["flow_direction"]
-		item.complete_parallel_move(target_cell, flow_direction)
+		item.complete_parallel_move(move_result["target_cell"], move_result["flow_direction"])
 		item.mark_resolved_on_beat(beat_index)
 
 
-func _commit_outputs(output_intents: Array[Dictionary], beat_index: int) -> void:
-	var target_counts: Dictionary = {}
-	for output_intent in output_intents:
-		var target_cell: Vector2i = output_intent["target_cell"]
-		target_counts[target_cell] = int(target_counts.get(target_cell, 0)) + 1
-
-	for output_intent in output_intents:
-		var target_cell: Vector2i = output_intent["target_cell"]
-		if int(target_counts[target_cell]) > 1:
+func _commit_inputs(input_results: Dictionary, beat_index: int) -> void:
+	for item in input_results.keys():
+		var input_result: Dictionary = input_results[item]
+		var machine: Machine = input_result["machine"] as Machine
+		if machine == null or not is_instance_valid(machine):
 			continue
 
-		if _world.item_layer.has_cell(target_cell):
+		var plan: Dictionary = input_result["plan"]
+		var action: String = String(plan["action"])
+		if action == INPUT_ACTION_ACCEPT:
+			if item == null or not is_instance_valid(item):
+				continue
+
+			item.store_in_machine(machine.global_position)
+			_apply_input_plan(machine, plan, item, beat_index)
+			if is_instance_valid(item):
+				item.mark_resolved_on_beat(beat_index)
 			continue
 
-		var action: String = String(output_intent["action"])
-		if action == OUTPUT_ACTION_SPAWN:
-			var spawned_flow_direction: Direction.Value = output_intent["flow_direction"]
-			var spawned_item: Item = _world.spawn_item(
-				target_cell,
-				String(output_intent["item_type"]),
-				output_intent["item_kind"],
-				spawned_flow_direction
-			)
-			if spawned_item == null:
+		if action == INPUT_ACTION_DESTROY:
+			if item == null or not is_instance_valid(item):
 				continue
 
-			spawned_item.mark_resolved_on_beat(beat_index)
-			_call_output_success(output_intent)
+			_apply_input_plan(machine, plan, item, beat_index)
+			if is_instance_valid(item):
+				item.mark_resolved_on_beat(beat_index)
+				item.remove_from_world()
+
+
+func _mark_remaining_items_resolved(item_snapshot: Dictionary, transport_results: Dictionary, input_results: Dictionary, beat_index: int) -> void:
+	for cell in item_snapshot.keys():
+		var item: Item = item_snapshot[cell] as Item
+		if item == null or not is_instance_valid(item):
 			continue
 
-		if action == OUTPUT_ACTION_RELEASE:
-			var released_item: Item = output_intent["item"] as Item
-			if released_item == null or not is_instance_valid(released_item):
-				continue
+		if input_results.has(item):
+			continue
 
-			var released_flow_direction: Direction.Value = output_intent["flow_direction"]
-			if not released_item.deploy_from_machine(target_cell, released_flow_direction):
-				continue
+		var transport_result: Dictionary = transport_results.get(item, {
+			"action": ITEM_RESULT_STAY,
+		})
+		if String(transport_result.get("action", ITEM_RESULT_STAY)) == ITEM_RESULT_MOVE:
+			continue
 
-			released_item.mark_resolved_on_beat(beat_index)
-			_call_output_success(output_intent)
+		item.mark_resolved_on_beat(beat_index)
 
 
-func _call_output_success(output_intent: Dictionary) -> void:
-	var on_success: Variant = output_intent.get("on_success", null)
-	if not (on_success is Callable):
+func _apply_output_plan(machine: Machine, _plan: Dictionary, _beat_index: int) -> void:
+	if machine is Producer:
+		var producer: Producer = machine as Producer
+		producer._pending_output_cargo_type = ""
+		producer._output_ready_beat = -1
 		return
 
-	var success_callable: Callable = on_success
-	if not success_callable.is_valid():
+	if machine is Packer:
+		var packer: Packer = machine as Packer
+		packer._held_item = null
+		packer._pending_output_item_type = ""
+		packer._output_ready_beat = -1
+		packer._enter_idle_state()
 		return
 
-	success_callable.call()
+	if machine is PressMachine:
+		var press_machine: PressMachine = machine as PressMachine
+		press_machine.clear_pressed_item()
+
+
+func _apply_input_plan(machine: Machine, plan: Dictionary, item: Item, _beat_index: int) -> void:
+	if machine is Packer:
+		var packer: Packer = machine as Packer
+		if String(plan.get("action", INPUT_ACTION_REJECT)) != INPUT_ACTION_ACCEPT:
+			return
+
+		packer._held_item = item
+		packer._enter_work_state()
+		return
+
+	if machine is PressMachine:
+		var press_machine: PressMachine = machine as PressMachine
+		press_machine._pressed_item = item
+		press_machine._press_start_beat = -1
+		press_machine._output_ready_beat = -1
+		return
+
+	if machine is Recycler:
+		var recycler: Recycler = machine as Recycler
+		if bool(plan.get("counts_as_goal", false)):
+			recycler.collect_product(String(plan["product_type"]))
+			return
+
+		if plan.has("cargo_type"):
+			recycler.log_cargo_destroyed(String(plan["cargo_type"]))

@@ -48,14 +48,10 @@ func get_target_cell() -> Vector2i:
 	return _registered_cell + Direction.to_vector2i(output_direction)
 
 
-func output(_beat_index: int) -> Dictionary:
+func plan_output(_beat_index: int, _receives_signal: bool) -> Dictionary:
 	return {
 		"action": "none",
 	}
-
-
-func input(_item: Item, _beat_index: int) -> String:
-	return "reject"
 
 
 # Belt 的严格入口规则在 transport 阶段判定：
@@ -63,7 +59,7 @@ func input(_item: Item, _beat_index: int) -> String:
 # 2. Item 无效或没有流动方向状态则阻塞。
 # 3. 只有 item.flow_direction 与 belt.input_direction 一致时才允许运输。
 # 成功运输后，会把 Item 下一格的流动方向写成 output_direction。
-func transport(item: Item, beat_index: int) -> Dictionary:
+func plan_transport(item: Item, beat_index: int, _receives_signal: bool) -> Dictionary:
 	if not should_trigger_on_beat(beat_index):
 		return {
 			"action": "block",
@@ -86,8 +82,10 @@ func transport(item: Item, beat_index: int) -> Dictionary:
 	}
 
 
-func start(_beat_index: int) -> void:
-	pass
+func plan_input(_item: Item, _beat_index: int, _receives_signal: bool) -> Dictionary:
+	return {
+		"action": "reject",
+	}
 
 
 # 根据当前输入/输出方向切换动画。
