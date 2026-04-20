@@ -27,7 +27,6 @@ func _ready() -> void:
 	level_file_dialog.filters = PackedStringArray(["*.json ; JSON 文件"])
 
 	_set_status_message("")
-	start_button.grab_focus()
 
 
 func _on_start_button_pressed() -> void:
