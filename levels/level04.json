@@ -138,8 +138,8 @@
       "x": 14,
       "y": 9,
       "packer": {
-        "facing": "RIGHT"
-
+        "facing": "RIGHT",
+        "transport_beat_interval": 1
       }
     },
     {
