@@ -1,14 +1,7 @@
 extends Node2D
 class_name Producer
 
-enum Direction {
-	UP,
-	RIGHT,
-	DOWN,
-	LEFT,
-}
-
-@export var facing: Direction = Direction.RIGHT:
+@export var facing: Direction.Value = Direction.Value.RIGHT:
 	set(value):
 		facing = value
 
@@ -47,7 +40,7 @@ func get_registered_cell() -> Vector2i:
 
 
 func get_target_cell() -> Vector2i:
-	return _registered_cell + _direction_to_offset(facing)
+	return _registered_cell + Direction.to_vector2i(facing)
 
 
 func has_remaining_production() -> bool:
@@ -111,18 +104,6 @@ func _unregister_from_producer_layer() -> void:
 		_world.producer_layer.erase_cell(_registered_cell)
 
 	_is_registered_to_layer = false
-
-
-func _direction_to_offset(direction: Direction) -> Vector2i:
-	match direction:
-		Direction.UP:
-			return Vector2i.UP
-		Direction.RIGHT:
-			return Vector2i.RIGHT
-		Direction.DOWN:
-			return Vector2i.DOWN
-		_:
-			return Vector2i.LEFT
 
 
 func _normalize_production_sequence(value: Array) -> Array[String]:

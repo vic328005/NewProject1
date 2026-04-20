@@ -2,13 +2,6 @@
 extends Node2D
 class_name PressMachine
 
-enum Direction {
-	UP,
-	RIGHT,
-	DOWN,
-	LEFT,
-}
-
 const PREVIEW_CELL_SIZE: float = 64.0
 const PREVIEW_CENTER: Vector2 = Vector2(PREVIEW_CELL_SIZE * 0.5, PREVIEW_CELL_SIZE * 0.5)
 const DEFAULT_CARGO_TYPE: String = CargoType.DEFAULT
@@ -18,7 +11,7 @@ const SHAPE_COLOR_1: Color = Color(0.96, 0.89, 0.72, 1.0)
 const SHAPE_COLOR_2: Color = Color(0.64, 0.92, 0.73, 1.0)
 const SHAPE_COLOR_3: Color = Color(0.62, 0.56, 0.98, 1.0)
 
-@export var facing: Direction = Direction.RIGHT:
+@export var facing: Direction.Value = Direction.Value.RIGHT:
 	set(value):
 		facing = value
 		_update_sprite_visual()
@@ -69,7 +62,7 @@ func get_registered_cell() -> Vector2i:
 
 
 func get_target_cell() -> Vector2i:
-	return _registered_cell + _direction_to_offset(facing)
+	return _registered_cell + Direction.to_vector2i(facing)
 
 
 func should_trigger_on_beat(beat_index: int) -> bool:
@@ -203,18 +196,6 @@ func _unregister_from_press_machine_layer() -> void:
 	_is_registered_to_layer = false
 
 
-func _direction_to_offset(direction: Direction) -> Vector2i:
-	match direction:
-		Direction.UP:
-			return Vector2i.UP
-		Direction.RIGHT:
-			return Vector2i.RIGHT
-		Direction.DOWN:
-			return Vector2i.DOWN
-		_:
-			return Vector2i.LEFT
-
-
 func _update_sprite_visual() -> void:
 	if _sprite == null:
 		_sprite = get_node_or_null(^"Sprite2D") as Sprite2D
@@ -269,13 +250,13 @@ func _draw_arrow_head(tip: Vector2, direction: Vector2) -> void:
 	)
 
 
-func _direction_to_vector(direction: Direction) -> Vector2:
+func _direction_to_vector(direction: Direction.Value) -> Vector2:
 	match direction:
-		Direction.UP:
+		Direction.Value.UP:
 			return Vector2.UP
-		Direction.RIGHT:
+		Direction.Value.RIGHT:
 			return Vector2.RIGHT
-		Direction.DOWN:
+		Direction.Value.DOWN:
 			return Vector2.DOWN
 		_:
 			return Vector2.LEFT

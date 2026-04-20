@@ -1,11 +1,84 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://bp3p2sosgxmqm"]
 
-[ext_resource type="Script" path="res://scripts/packer.gd" id="1_packer"]
-[ext_resource type="Texture2D" uid="uid://b1wnmqxdiiv50" path="res://assets/images/unit_white.png" id="2_packer"]
+[ext_resource type="Script" uid="uid://c4a5xydes7k60" path="res://scripts/packer.gd" id="1_packer"]
+[ext_resource type="Texture2D" uid="uid://crokg1s468svu" path="res://assets/images/animations/packer/packer1.png" id="3_22bne"]
+[ext_resource type="Texture2D" uid="uid://bvsap022037wr" path="res://assets/images/animations/packer/packer2.png" id="4_gjrbr"]
+[ext_resource type="Texture2D" uid="uid://k4odwquelt6e" path="res://assets/images/animations/packer/packer3.png" id="5_wt2qa"]
+[ext_resource type="Texture2D" uid="uid://bw2yka7x1n71c" path="res://assets/images/animations/packer/packer4.png" id="6_05uyq"]
+[ext_resource type="Texture2D" uid="uid://c87hd74qemwu8" path="res://assets/images/animations/packer/packer5.png" id="7_2le03"]
+[ext_resource type="Texture2D" uid="uid://3efnpdygumgi" path="res://assets/images/animations/packer/packer6.png" id="8_l4elx"]
+[ext_resource type="Texture2D" uid="uid://cgldqyvjq176n" path="res://assets/images/animations/packer/packer7.png" id="9_4pobf"]
+[ext_resource type="Texture2D" uid="uid://ckf2x3d4jxlx" path="res://assets/images/animations/packer/packer8.png" id="10_od0dp"]
+[ext_resource type="Texture2D" uid="uid://nlimc6k35r0" path="res://assets/images/animations/packer/packer9.png" id="11_pkwr5"]
+[ext_resource type="Texture2D" uid="uid://ppq16m3sb64i" path="res://assets/images/animations/packer/packer10.png" id="12_ate2b"]
+[ext_resource type="Texture2D" uid="uid://cen875hehqr0v" path="res://assets/images/animations/packer/packer11.png" id="13_dppvo"]
+[ext_resource type="Texture2D" uid="uid://buyf4pfgwf0p1" path="res://assets/images/animations/packer/packer12.png" id="14_o1cgu"]
+[ext_resource type="Texture2D" uid="uid://crv6yjdkqoika" path="res://assets/images/animations/packer/packer13.png" id="15_spjjv"]
+[ext_resource type="Texture2D" uid="uid://ijriss33wuhn" path="res://assets/images/animations/packer/packer14.png" id="16_2ww25"]
 
-[node name="Packer" type="Node2D"]
+[sub_resource type="SpriteFrames" id="SpriteFrames_m50nk"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("3_22bne")
+}],
+"loop": true,
+"name": &"idle",
+"speed": 2.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("3_22bne")
+}, {
+"duration": 1.0,
+"texture": ExtResource("4_gjrbr")
+}, {
+"duration": 1.0,
+"texture": ExtResource("5_wt2qa")
+}, {
+"duration": 1.0,
+"texture": ExtResource("6_05uyq")
+}, {
+"duration": 1.0,
+"texture": ExtResource("7_2le03")
+}, {
+"duration": 1.0,
+"texture": ExtResource("8_l4elx")
+}, {
+"duration": 1.0,
+"texture": ExtResource("9_4pobf")
+}, {
+"duration": 1.0,
+"texture": ExtResource("10_od0dp")
+}, {
+"duration": 1.0,
+"texture": ExtResource("11_pkwr5")
+}, {
+"duration": 1.0,
+"texture": ExtResource("12_ate2b")
+}, {
+"duration": 1.0,
+"texture": ExtResource("13_dppvo")
+}, {
+"duration": 1.0,
+"texture": ExtResource("14_o1cgu")
+}, {
+"duration": 1.0,
+"texture": ExtResource("15_spjjv")
+}, {
+"duration": 1.0,
+"texture": ExtResource("16_2ww25")
+}],
+"loop": true,
+"name": &"work",
+"speed": 10.0
+}]
+
+[node name="Packer" type="Node2D" unique_id=1311709342]
 script = ExtResource("1_packer")
 
-[node name="Sprite2D" type="Sprite2D" parent="."]
-position = Vector2(32, 32)
-texture = ExtResource("2_packer")
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="." unique_id=763680549]
+position = Vector2(32, 16)
+sprite_frames = SubResource("SpriteFrames_m50nk")
+animation = &"idle"
+frame_progress = 0.9674297

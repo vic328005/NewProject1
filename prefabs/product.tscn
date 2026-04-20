@@ -1,12 +1,10 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://db6u8b3fqtlp"]
 
-[ext_resource type="Script" path="res://scripts/product.gd" id="1_product"]
-[ext_resource type="Texture2D" path="res://assets/images/product_1.svg" id="2_product"]
+[ext_resource type="Script" uid="uid://cudpcrpurn7wq" path="res://scripts/product.gd" id="1_product"]
 
-[node name="Product" type="Node2D"]
+[node name="Product" type="Node2D" unique_id=894446759]
 script = ExtResource("1_product")
 
-[node name="Sprite2D" type="Sprite2D" parent="."]
+[node name="Sprite2D" type="Sprite2D" parent="." unique_id=325977551]
 z_index = 1
 position = Vector2(32, 32)
-texture = ExtResource("2_product")

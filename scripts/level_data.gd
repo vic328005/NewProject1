@@ -17,7 +17,6 @@ const RECYCLER_TARGET_KEYS := ["product_type", "required_count"]
 const SIGNAL_TOWER_KEYS: Array = ["max_steps"]
 const PRESS_MACHINE_KEYS := ["facing", "cargo_type", "beat_interval"]
 const PACKER_KEYS := ["facing"]
-const BELT_FACING_VALUES := ["UP", "RIGHT", "DOWN", "LEFT"]
 const BELT_TURN_MODE_VALUES := ["STRAIGHT", "LEFT", "RIGHT"]
 const SORTER_OUTPUT_SIDE_VALUES := ["LEFT", "RIGHT"]
 const CARGO_TYPE_VALUES: Array[String] = CargoType.VALUES
@@ -251,8 +250,8 @@ static func _parse_belt(raw_belt: Dictionary, cell_label: String, source_label: 
 	var turn_mode: String = String(raw_belt["turn_mode"])
 	var beat_interval: int = int(raw_belt["beat_interval"])
 
-	if not BELT_FACING_VALUES.has(facing):
-		return _validation_error(source_label, "%s.facing must be one of %s" % [belt_label, BELT_FACING_VALUES])
+	if not Direction.is_valid_name(facing):
+		return _validation_error(source_label, "%s.facing must be one of %s" % [belt_label, Direction.NAMES])
 
 	if not BELT_TURN_MODE_VALUES.has(turn_mode):
 		return _validation_error(source_label, "%s.turn_mode must be one of %s" % [belt_label, BELT_TURN_MODE_VALUES])
@@ -281,8 +280,8 @@ static func _parse_sorter(raw_sorter: Dictionary, cell_label: String, source_lab
 	var input_direction: String = String(raw_sorter["input_direction"]).strip_edges().to_upper()
 	var initial_output_side: String = String(raw_sorter["initial_output_side"]).strip_edges().to_upper()
 
-	if not BELT_FACING_VALUES.has(input_direction):
-		return _validation_error(source_label, "%s.input_direction must be one of %s" % [sorter_label, BELT_FACING_VALUES])
+	if not Direction.is_valid_name(input_direction):
+		return _validation_error(source_label, "%s.input_direction must be one of %s" % [sorter_label, Direction.NAMES])
 
 	if not SORTER_OUTPUT_SIDE_VALUES.has(initial_output_side):
 		return _validation_error(source_label, "%s.initial_output_side must be one of %s" % [sorter_label, SORTER_OUTPUT_SIDE_VALUES])
@@ -329,8 +328,8 @@ static func _parse_producer(raw_producer: Dictionary, cell_label: String, source
 	var normalized_sequence: Array[String] = []
 	var raw_sequence: Array = Array(raw_producer["production_sequence"])
 
-	if not BELT_FACING_VALUES.has(facing):
-		return _validation_error(source_label, "%s.facing must be one of %s" % [producer_label, BELT_FACING_VALUES])
+	if not Direction.is_valid_name(facing):
+		return _validation_error(source_label, "%s.facing must be one of %s" % [producer_label, Direction.NAMES])
 
 	for index in range(raw_sequence.size()):
 		if typeof(raw_sequence[index]) != TYPE_STRING:
@@ -437,8 +436,8 @@ static func _parse_press_machine(raw_press_machine: Dictionary, cell_label: Stri
 	var cargo_type: String = CargoType.normalize(raw_press_machine["cargo_type"])
 	var beat_interval: int = int(raw_press_machine["beat_interval"])
 
-	if not BELT_FACING_VALUES.has(facing):
-		return _validation_error(source_label, "%s.facing must be one of %s" % [press_machine_label, BELT_FACING_VALUES])
+	if not Direction.is_valid_name(facing):
+		return _validation_error(source_label, "%s.facing must be one of %s" % [press_machine_label, Direction.NAMES])
 
 	if not CargoType.is_valid(cargo_type):
 		return _validation_error(source_label, "%s.cargo_type must be one of %s" % [press_machine_label, CARGO_TYPE_VALUES])
@@ -462,8 +461,8 @@ static func _parse_packer(raw_packer: Dictionary, cell_label: String, source_lab
 		return _validation_error(source_label, "%s.facing must be a non-empty string" % packer_label)
 
 	var facing: String = String(raw_packer["facing"]).strip_edges().to_upper()
-	if not BELT_FACING_VALUES.has(facing):
-		return _validation_error(source_label, "%s.facing must be one of %s" % [packer_label, BELT_FACING_VALUES])
+	if not Direction.is_valid_name(facing):
+		return _validation_error(source_label, "%s.facing must be one of %s" % [packer_label, Direction.NAMES])
 
 	return {
 		"facing": facing,

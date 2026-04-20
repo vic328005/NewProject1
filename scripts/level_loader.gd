@@ -83,7 +83,7 @@ func apply_level_data_to_world(level_data: LevelData, world: World) -> bool:
 func _create_belt(cell: Vector2i, belt_data: Dictionary, world: World) -> Belt:
 	var belt: Belt = BELT_SCENE.instantiate() as Belt
 	belt.position = world.cell_to_world(cell)
-	belt.facing = _to_belt_direction(String(belt_data["facing"]))
+	belt.facing = Direction.from_name(String(belt_data["facing"]))
 	belt.turn_mode = _to_belt_turn_mode(String(belt_data["turn_mode"]))
 	belt.beat_interval = int(belt_data["beat_interval"])
 	return belt
@@ -92,7 +92,7 @@ func _create_belt(cell: Vector2i, belt_data: Dictionary, world: World) -> Belt:
 func _create_sorter(cell: Vector2i, sorter_data: Dictionary, world: World) -> Sorter:
 	var sorter: Sorter = SORTER_SCENE.instantiate() as Sorter
 	sorter.position = world.cell_to_world(cell)
-	sorter.input_direction = _to_sorter_input_direction(String(sorter_data["input_direction"]))
+	sorter.input_direction = Direction.from_name(String(sorter_data["input_direction"]))
 	sorter.initial_output_side = _to_sorter_output_side(String(sorter_data["initial_output_side"]))
 	return sorter
 
@@ -107,7 +107,7 @@ func _create_cargo(cell: Vector2i, cargo_data: Dictionary, world: World) -> Carg
 func _create_producer(cell: Vector2i, producer_data: Dictionary, world: World) -> Producer:
 	var producer: Producer = PRODUCER_SCENE.instantiate() as Producer
 	producer.position = world.cell_to_world(cell)
-	producer.facing = _to_producer_direction(String(producer_data["facing"]))
+	producer.facing = Direction.from_name(String(producer_data["facing"]))
 	producer.beat_interval = int(producer_data["beat_interval"])
 	producer.production_sequence = Array(producer_data["production_sequence"]).duplicate(true)
 	return producer
@@ -131,7 +131,7 @@ func _create_signal_tower(cell: Vector2i, signal_tower_data: Dictionary, world: 
 func _create_press_machine(cell: Vector2i, press_machine_data: Dictionary, world: World) -> PressMachine:
 	var press_machine: PressMachine = PRESS_MACHINE_SCENE.instantiate() as PressMachine
 	press_machine.position = world.cell_to_world(cell)
-	press_machine.facing = _to_press_machine_direction(String(press_machine_data["facing"]))
+	press_machine.facing = Direction.from_name(String(press_machine_data["facing"]))
 	press_machine.cargo_type = String(press_machine_data["cargo_type"])
 	press_machine.beat_interval = int(press_machine_data["beat_interval"])
 	return press_machine
@@ -140,32 +140,8 @@ func _create_press_machine(cell: Vector2i, press_machine_data: Dictionary, world
 func _create_packer(cell: Vector2i, packer_data: Dictionary, world: World) -> Packer:
 	var packer: Packer = PACKER_SCENE.instantiate() as Packer
 	packer.position = world.cell_to_world(cell)
-	packer.facing = _to_packer_direction(String(packer_data["facing"]))
+	packer.facing = Direction.from_name(String(packer_data["facing"]))
 	return packer
-
-
-func _to_belt_direction(direction_name: String) -> Belt.Direction:
-	match direction_name:
-		"UP":
-			return Belt.Direction.UP
-		"RIGHT":
-			return Belt.Direction.RIGHT
-		"DOWN":
-			return Belt.Direction.DOWN
-		_:
-			return Belt.Direction.LEFT
-
-
-func _to_producer_direction(direction_name: String) -> Producer.Direction:
-	match direction_name:
-		"UP":
-			return Producer.Direction.UP
-		"RIGHT":
-			return Producer.Direction.RIGHT
-		"DOWN":
-			return Producer.Direction.DOWN
-		_:
-			return Producer.Direction.LEFT
 
 
 func _to_belt_turn_mode(turn_mode_name: String) -> Belt.TurnMode:
@@ -178,45 +154,9 @@ func _to_belt_turn_mode(turn_mode_name: String) -> Belt.TurnMode:
 			return Belt.TurnMode.STRAIGHT
 
 
-func _to_sorter_input_direction(direction_name: String) -> Sorter.InputDirection:
-	match direction_name:
-		"UP":
-			return Sorter.InputDirection.UP
-		"RIGHT":
-			return Sorter.InputDirection.RIGHT
-		"DOWN":
-			return Sorter.InputDirection.DOWN
-		_:
-			return Sorter.InputDirection.LEFT
-
-
 func _to_sorter_output_side(side_name: String) -> Sorter.OutputSide:
 	match side_name:
 		"RIGHT":
 			return Sorter.OutputSide.RIGHT
 		_:
 			return Sorter.OutputSide.LEFT
-
-
-func _to_press_machine_direction(direction_name: String) -> PressMachine.Direction:
-	match direction_name:
-		"UP":
-			return PressMachine.Direction.UP
-		"RIGHT":
-			return PressMachine.Direction.RIGHT
-		"DOWN":
-			return PressMachine.Direction.DOWN
-		_:
-			return PressMachine.Direction.LEFT
-
-
-func _to_packer_direction(direction_name: String) -> Packer.Direction:
-	match direction_name:
-		"UP":
-			return Packer.Direction.UP
-		"RIGHT":
-			return Packer.Direction.RIGHT
-		"DOWN":
-			return Packer.Direction.DOWN
-		_:
-			return Packer.Direction.LEFT

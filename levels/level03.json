@@ -109,7 +109,7 @@
       "x": 9,
       "y": 11,
       "signal_tower": {
-        "max_steps": 3
+        "max_steps": 10
       }
     }
   ]

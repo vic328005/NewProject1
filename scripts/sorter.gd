@@ -2,13 +2,6 @@
 extends Node2D
 class_name Sorter
 
-enum InputDirection {
-	UP,
-	RIGHT,
-	DOWN,
-	LEFT,
-}
-
 enum OutputSide {
 	LEFT,
 	RIGHT,
@@ -21,7 +14,7 @@ const ACTIVE_PATH_COLOR: Color = Color(0.95, 0.95, 0.98, 1.0)
 const INACTIVE_PATH_COLOR: Color = Color(0.56, 0.74, 0.84, 1.0)
 const OUTLINE_COLOR: Color = Color(0.12, 0.16, 0.20, 1.0)
 
-@export var input_direction: InputDirection = InputDirection.UP:
+@export var input_direction: Direction.Value = Direction.Value.UP:
 	set(value):
 		input_direction = value
 		_update_sprite_visual()
@@ -69,7 +62,7 @@ func get_registered_cell() -> Vector2i:
 
 
 func get_target_cell() -> Vector2i:
-	return _registered_cell + _direction_to_offset(_get_output_direction())
+	return _registered_cell + Direction.to_vector2i(_get_output_direction())
 
 
 func toggle_output() -> void:
@@ -103,32 +96,20 @@ func _unregister_from_sorter_layer() -> void:
 	_is_registered_to_layer = false
 
 
-func _get_output_direction() -> InputDirection:
+func _get_output_direction() -> Direction.Value:
 	if _current_output_side == OutputSide.LEFT:
-		return wrapi(int(input_direction) - 1, 0, 4) as InputDirection
+		return Direction.rotate_left(input_direction)
 
-	return wrapi(int(input_direction) + 1, 0, 4) as InputDirection
+	return Direction.rotate_right(input_direction)
 
 
-func _direction_to_offset(direction: InputDirection) -> Vector2i:
+func _direction_to_rotation(direction: Direction.Value) -> float:
 	match direction:
-		InputDirection.UP:
-			return Vector2i.UP
-		InputDirection.RIGHT:
-			return Vector2i.RIGHT
-		InputDirection.DOWN:
-			return Vector2i.DOWN
-		_:
-			return Vector2i.LEFT
-
-
-func _direction_to_rotation(direction: InputDirection) -> float:
-	match direction:
-		InputDirection.UP:
+		Direction.Value.UP:
 			return 0.0
-		InputDirection.RIGHT:
+		Direction.Value.RIGHT:
 			return PI * 0.5
-		InputDirection.DOWN:
+		Direction.Value.DOWN:
 			return PI
 		_:
 			return PI * 1.5

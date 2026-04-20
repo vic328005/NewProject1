@@ -2,13 +2,6 @@
 extends Node2D
 class_name Belt
 
-enum Direction {
-	UP,
-	RIGHT,
-	DOWN,
-	LEFT,
-}
-
 enum TurnMode {
 	STRAIGHT,
 	LEFT,
@@ -22,7 +15,7 @@ const STRAIGHT_INTERVAL_2_TEXTURE: Texture2D = preload("res://assets/images/belt
 const TURN_INTERVAL_1_TEXTURE: Texture2D = preload("res://assets/images/belt_turn_interval_1.png")
 const TURN_INTERVAL_2_TEXTURE: Texture2D = preload("res://assets/images/belt_turn_interval_2.png")
 
-@export var facing: Direction = Direction.RIGHT:
+@export var facing: Direction.Value = Direction.Value.RIGHT:
 	set(value):
 		facing = value
 		_update_sprite_visual()
@@ -73,7 +66,7 @@ func get_registered_cell() -> Vector2i:
 
 
 func get_target_cell() -> Vector2i:
-	return _registered_cell + _direction_to_offset(_get_output_direction())
+	return _registered_cell + Direction.to_vector2i(_get_output_direction())
 
 
 func _register_to_belt_layer() -> void:
@@ -96,26 +89,14 @@ func _unregister_from_belt_layer() -> void:
 	_is_registered_to_layer = false
 
 
-func _get_output_direction() -> Direction:
+func _get_output_direction() -> Direction.Value:
 	match turn_mode:
 		TurnMode.LEFT:
-			return wrapi(int(facing) - 1, 0, 4) as Direction
+			return Direction.rotate_left(facing)
 		TurnMode.RIGHT:
-			return wrapi(int(facing) + 1, 0, 4) as Direction
+			return Direction.rotate_right(facing)
 		_:
 			return facing
-
-
-func _direction_to_offset(direction: Direction) -> Vector2i:
-	match direction:
-		Direction.UP:
-			return Vector2i.UP
-		Direction.RIGHT:
-			return Vector2i.RIGHT
-		Direction.DOWN:
-			return Vector2i.DOWN
-		_:
-			return Vector2i.LEFT
 
 
 func _update_sprite_visual() -> void:
@@ -144,13 +125,13 @@ func _get_belt_texture() -> Texture2D:
 	return TURN_INTERVAL_2_TEXTURE
 
 
-func _get_rotation_degrees_for_direction(direction: Direction) -> float:
+func _get_rotation_degrees_for_direction(direction: Direction.Value) -> float:
 	match direction:
-		Direction.UP:
+		Direction.Value.UP:
 			return -90.0
-		Direction.RIGHT:
+		Direction.Value.RIGHT:
 			return 0.0
-		Direction.DOWN:
+		Direction.Value.DOWN:
 			return 90.0
 		_:
 			return 180.0

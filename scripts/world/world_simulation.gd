@@ -483,32 +483,12 @@ func _get_sorter_target_cell(sorter: Sorter, should_toggle: bool) -> Vector2i:
 		return current_target_cell
 
 	var sorter_cell: Vector2i = sorter.get_registered_cell()
-	var left_target_cell: Vector2i = sorter_cell + _sorter_direction_to_offset(_rotate_sorter_left(sorter.input_direction))
-	var right_target_cell: Vector2i = sorter_cell + _sorter_direction_to_offset(_rotate_sorter_right(sorter.input_direction))
+	var left_target_cell: Vector2i = sorter_cell + Direction.to_vector2i(Direction.rotate_left(sorter.input_direction))
+	var right_target_cell: Vector2i = sorter_cell + Direction.to_vector2i(Direction.rotate_right(sorter.input_direction))
 	if current_target_cell == left_target_cell:
 		return right_target_cell
 
 	return left_target_cell
-
-
-func _rotate_sorter_left(direction: Sorter.InputDirection) -> Sorter.InputDirection:
-	return wrapi(int(direction) - 1, 0, 4) as Sorter.InputDirection
-
-
-func _rotate_sorter_right(direction: Sorter.InputDirection) -> Sorter.InputDirection:
-	return wrapi(int(direction) + 1, 0, 4) as Sorter.InputDirection
-
-
-func _sorter_direction_to_offset(direction: Sorter.InputDirection) -> Vector2i:
-	match direction:
-		Sorter.InputDirection.UP:
-			return Vector2i.UP
-		Sorter.InputDirection.RIGHT:
-			return Vector2i.RIGHT
-		Sorter.InputDirection.DOWN:
-			return Vector2i.DOWN
-		_:
-			return Vector2i.LEFT
 
 
 func _is_move_command(command_type: StringName) -> bool:
