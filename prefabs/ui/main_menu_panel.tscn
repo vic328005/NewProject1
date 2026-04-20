@@ -15,8 +15,6 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_wyq6w")
 
-[node name="LevelFileDialog" type="FileDialog" parent="." unique_id=1229659887]
-
 [node name="Background" type="TextureRect" parent="." unique_id=1886844006]
 layout_mode = 1
 anchors_preset = 15
@@ -116,23 +114,3 @@ theme_override_font_sizes/font_size = 26
 icon = ExtResource("4_8v2wq")
 flat = true
 alignment = 0
-
-[node name="LoadExternalJsonButton" type="Button" parent="MenuLayer/MarginContainer/Content" unique_id=103320279]
-custom_minimum_size = Vector2(0, 42)
-layout_mode = 2
-theme_override_colors/font_color = Color(0.870588, 0.8, 0.937255, 0.96)
-theme_override_colors/font_focus_color = Color(0.988235, 0.905882, 0.988235, 1)
-theme_override_colors/font_hover_color = Color(0.988235, 0.905882, 0.988235, 1)
-theme_override_font_sizes/font_size = 26
-text = "加载外部 JSON"
-flat = true
-alignment = 0
-
-[node name="StatusLabel" type="Label" parent="MenuLayer/MarginContainer/Content" unique_id=1778643426]
-visible = false
-custom_minimum_size = Vector2(0, 72)
-layout_mode = 2
-theme_override_colors/font_color = Color(0.996078, 0.741176, 0.776471, 1)
-theme_override_font_sizes/font_size = 18
-text = "加载失败"
-autowrap_mode = 3

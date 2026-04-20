@@ -377,7 +377,7 @@ target 字段规则：
 
 - 信号塔不会每拍自动发射信号
 - 当前实现里，它监听 `metronome_hit` 事件
-- `metronome_hit` 现在由 `scripts/ui/metronome_panel.gd` 在玩家按下空格时发出
+- `metronome_hit` 现在由 `scripts/ui/metronome_panel.gd` 在玩家按下任意键或鼠标左右键时发出
 - 信号波创建后会立刻写入 `signal_layer`
 - 后续每次拍点结算结束时，信号波再推进一圈，直到超过 `max_steps`
 

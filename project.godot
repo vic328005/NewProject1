@@ -15,6 +15,7 @@ config/version="0.0.1"
 run/main_scene="uid://b1byl7ays4fs3"
 config/features=PackedStringArray("4.6", "Forward Plus")
 config/icon="uid://4q335xxs2p"
+boot_splash/minimum_display_time=1500
 
 [autoload]
 

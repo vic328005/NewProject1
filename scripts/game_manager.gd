@@ -106,9 +106,10 @@ func _start_game_with_level_path(level_path: String) -> Dictionary:
 	state = GameState.PLAYING
 
 	# 以关卡节奏参数重置节拍器，并打开运行中需要的 UI。
-	if is_instance_valid(audio):
-		audio.play_game_bgm()
 	beats.reset(level_data.beat_bpm)
+	if is_instance_valid(audio):
+		# 每局开始都从同一音乐起点启动，保证节拍器和 BGM 共用基准。
+		audio.play_game_bgm(true)
 	ui.open(UIDef.metronome_panel)
 	ui.open(UIDef.level_progress_panel)
 	beats.start()

@@ -9,22 +9,34 @@ const CENTER_MARKER_INDEX: int = MARKER_COUNT / 2
 const TRACK_PADDING: float = 64.0
 # 玩家输入命中/未命中反馈的持续时长。
 const INPUT_FEEDBACK_DURATION: float = 0.16
-# 命中窗口，只允许在拍点到来前的一段进度范围内判定为命中。
-const HIT_WINDOW: float = 0.4
+# 准按窗口起点；当前版本只区分“早按”和“准按”。
+const HIT_WINDOW_START_PROGRESS: float = 0.86
+# 早按反馈围绕中心轻微抖动，提示当前还没到拍点，但不偏离中心。
+const EARLY_FEEDBACK_JITTER_PIXELS: float = 5.0
 # 轨道与命中区、刻度的基础配色。
 const TRACK_COLOR: Color = Color(0.07, 0.08, 0.11, 0.84)
 const TRACK_BORDER_COLOR: Color = Color(0.9, 0.92, 0.98, 0.75)
 const HIT_ZONE_COLOR: Color = Color(0.45, 0.36, 0.56, 0.32)
-const HIT_ZONE_HIT_COLOR: Color = Color(0.2, 0.84, 0.46, 0.68)
-const HIT_ZONE_MISS_COLOR: Color = Color(0.92, 0.3, 0.26, 0.62)
+const HIT_ZONE_HIT_COLOR: Color = Color(0.12, 1.0, 0.32, 0.82)
+const HIT_ZONE_EARLY_COLOR: Color = Color(1.0, 0.12, 0.12, 0.78)
+const HIT_ZONE_EMPTY_COLOR: Color = Color(1.0, 0.88, 0.08, 0.72)
 const MARKER_COLOR: Color = Color(0.93, 0.95, 0.98, 0.9)
-const MARKER_HIT_COLOR: Color = Color(0.3, 0.96, 0.52, 0.98)
-const MARKER_MISS_COLOR: Color = Color(1.0, 0.42, 0.34, 0.95)
+const MARKER_HIT_COLOR: Color = Color(0.18, 1.0, 0.36, 1.0)
+const MARKER_EARLY_COLOR: Color = Color(1.0, 0.18, 0.18, 1.0)
+const MARKER_EMPTY_COLOR: Color = Color(1.0, 0.9, 0.12, 0.98)
+
+enum TimingResult {
+	NONE,
+	HIT,
+	EARLY,
+	EMPTY,
+}
 
 enum FeedbackState {
 	NONE,
 	HIT,
-	MISS,
+	EARLY,
+	EMPTY,
 }
 
 # 主要 UI 节点引用。
@@ -41,11 +53,14 @@ var _hit_zone_style: StyleBoxFlat
 # 动态生成的刻度节点和对应样式缓存。
 var _markers: Array[Panel] = []
 var _marker_styles: Array[StyleBoxFlat] = []
+var _hit_zone_base_position: Vector2 = Vector2.ZERO
 # 最近一次输入反馈状态，以及其剩余显示时间。
 var _feedback_state: int = FeedbackState.NONE
 var _feedback_time_remaining: float = 0.0
 # 记录当前拍是否已经处理过一次输入，防止长按或重复事件同拍多次判定。
 var _resolved_beat_index: int = -1
+var _current_beat_had_hit: bool = false
+var _current_beat_had_early_input: bool = false
 
 
 func _ready() -> void:
@@ -63,6 +78,7 @@ func _ready() -> void:
 	_setup_track_style()
 	_setup_hit_zone_style()
 	_create_markers()
+	_hit_zone_base_position = hit_zone.position
 
 	# 监听节拍触发，用来重置“本拍已处理输入”的标记。
 	if not _beats.beat_fired.is_connected(_on_beat_fired):
@@ -88,8 +104,8 @@ func _process(delta: float) -> void:
 	_update_visuals()
 
 
-func _unhandled_key_input(event: InputEvent) -> void:
-	if not _is_space_press(event):
+func _unhandled_input(event: InputEvent) -> void:
+	if not _is_trigger_press(event):
 		return
 
 	if not is_instance_valid(_beats) or not is_instance_valid(GM.event):
@@ -102,13 +118,7 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		return
 
 	_resolved_beat_index = beat_index
-
-	# 临时补丁：先不处理当前节拍手感问题，改为空格按下就直接发事件。
-	# 同时继续保留“一拍只响应一次”的限制，后续再回到精确时机判定。
-	_emit_metronome_hit(beat_index)
-	if is_instance_valid(GM.audio):
-		GM.audio.play_sfx(AudioController.SFX_SIGNAL_TOWER_FIRE)
-	_trigger_feedback(FeedbackState.HIT)
+	_resolve_input_timing(beat_index, _beats.get_beat_progress())
 
 	# 当前输入已经被节拍面板消费，不再继续传递。
 	get_viewport().set_input_as_handled()
@@ -212,8 +222,10 @@ func _update_visuals() -> void:
 		if is_feedback_focus:
 			if _feedback_state == FeedbackState.HIT:
 				fill_color = fill_color.lerp(MARKER_HIT_COLOR, feedback_strength)
-			elif _feedback_state == FeedbackState.MISS:
-				fill_color = fill_color.lerp(MARKER_MISS_COLOR, feedback_strength)
+			elif _feedback_state == FeedbackState.EARLY:
+				fill_color = fill_color.lerp(MARKER_EARLY_COLOR, feedback_strength)
+			elif _feedback_state == FeedbackState.EMPTY:
+				fill_color = fill_color.lerp(MARKER_EMPTY_COLOR, feedback_strength)
 		fill_color.a *= edge_fade
 
 		var border_color: Color = Color(fill_color.r, fill_color.g, fill_color.b, minf(fill_color.a + 0.1, 1.0))
@@ -237,6 +249,7 @@ func _update_hit_zone(feedback_strength: float) -> void:
 	var zone_scale: float = 1.0
 	var zone_color: Color = HIT_ZONE_COLOR
 	var border_color: Color = TRACK_BORDER_COLOR
+	var zone_position: Vector2 = _hit_zone_base_position
 
 	if feedback_strength > 0.0:
 		if _feedback_state == FeedbackState.HIT:
@@ -244,13 +257,19 @@ func _update_hit_zone(feedback_strength: float) -> void:
 			zone_scale += 0.12 * feedback_strength
 			zone_color = zone_color.lerp(HIT_ZONE_HIT_COLOR, feedback_strength)
 			border_color = border_color.lerp(MARKER_HIT_COLOR, feedback_strength)
-		elif _feedback_state == FeedbackState.MISS:
-			# 失误时略微收缩并偏向红色。
-			zone_scale -= 0.08 * feedback_strength
-			zone_color = zone_color.lerp(HIT_ZONE_MISS_COLOR, feedback_strength)
-			border_color = border_color.lerp(MARKER_MISS_COLOR, feedback_strength)
+		elif _feedback_state == FeedbackState.EARLY:
+			zone_scale += 0.04 * feedback_strength
+			zone_position.x += _get_early_center_jitter(feedback_strength)
+			zone_color = zone_color.lerp(HIT_ZONE_EARLY_COLOR, feedback_strength)
+			border_color = border_color.lerp(MARKER_EARLY_COLOR, feedback_strength)
+		elif _feedback_state == FeedbackState.EMPTY:
+			# 空拍只做一次较轻的红闪，避免持续吵闹。
+			zone_scale -= 0.06 * feedback_strength
+			zone_color = zone_color.lerp(HIT_ZONE_EMPTY_COLOR, feedback_strength)
+			border_color = border_color.lerp(MARKER_EMPTY_COLOR, feedback_strength)
 
 	hit_zone.scale = Vector2.ONE * zone_scale
+	hit_zone.position = zone_position
 	hit_zone.modulate = Color(1.0, 1.0, 1.0, 1.0)
 	_hit_zone_style.bg_color = zone_color
 	_hit_zone_style.border_color = border_color
@@ -264,10 +283,40 @@ func _get_feedback_strength() -> float:
 	return _feedback_time_remaining / INPUT_FEEDBACK_DURATION
 
 
+func _get_early_center_jitter(feedback_strength: float) -> float:
+	var feedback_progress: float = 1.0 - feedback_strength
+	return sin(feedback_progress * PI * 4.0) * EARLY_FEEDBACK_JITTER_PIXELS * feedback_strength
+
+
 func _trigger_feedback(feedback_state: int) -> void:
 	# 每次输入结果都会刷新反馈状态和持续时间。
 	_feedback_state = feedback_state
 	_feedback_time_remaining = INPUT_FEEDBACK_DURATION
+
+
+func _resolve_input_timing(beat_index: int, beat_progress: float) -> void:
+	var timing_result: int = _classify_input_timing(beat_progress)
+	if timing_result == TimingResult.HIT:
+		_current_beat_had_hit = true
+		_emit_metronome_hit(beat_index)
+		if is_instance_valid(GM.audio):
+			GM.audio.play_sfx(AudioController.SFX_SIGNAL_TOWER_FIRE)
+		_trigger_feedback(FeedbackState.HIT)
+		return
+
+	_current_beat_had_early_input = true
+	_trigger_feedback(FeedbackState.EARLY)
+
+
+func _classify_input_timing(beat_progress: float) -> int:
+	if _is_hit_timing(beat_progress):
+		return TimingResult.HIT
+
+	return TimingResult.EARLY
+
+
+func _should_trigger_empty_feedback() -> bool:
+	return not _current_beat_had_hit and not _current_beat_had_early_input
 
 
 func _emit_metronome_hit(beat_index: int) -> void:
@@ -277,23 +326,33 @@ func _emit_metronome_hit(beat_index: int) -> void:
 	GM.event.emit_event(EventDef.metronome_hit, payload)
 
 
-func _is_space_press(event: InputEvent) -> bool:
-	# 只响应真正的空格按下，不处理抬起和键盘连发。
-	if not (event is InputEventKey):
-		return false
+func _is_trigger_press(event: InputEvent) -> bool:
+	# 键盘任意键按下都可触发，但忽略抬起和键盘连发。
+	if event is InputEventKey:
+		var key_event: InputEventKey = event as InputEventKey
+		return key_event != null and key_event.pressed and not key_event.echo
 
-	var key_event: InputEventKey = event as InputEventKey
-	if key_event == null or not key_event.pressed or key_event.echo:
-		return false
+	# 鼠标只接收左右键按下，避免滚轮也触发节拍输入。
+	if event is InputEventMouseButton:
+		var mouse_event: InputEventMouseButton = event as InputEventMouseButton
+		if mouse_event == null or not mouse_event.pressed:
+			return false
 
-	return key_event.keycode == KEY_SPACE or key_event.physical_keycode == KEY_SPACE
+		return mouse_event.button_index == MOUSE_BUTTON_LEFT or mouse_event.button_index == MOUSE_BUTTON_RIGHT
+
+	return false
 
 
 func _is_hit_timing(beat_progress: float) -> bool:
-	# 只允许在拍点到来前的一小段窗口内命中。
-	return beat_progress >= 1.0 - HIT_WINDOW
+	# 当前版本把成功窗收回到更靠近真实拍点的位置。
+	return beat_progress >= HIT_WINDOW_START_PROGRESS
 
 
 func _on_beat_fired(_beat_index: int, _beat_time: float) -> void:
+	if _should_trigger_empty_feedback():
+		_trigger_feedback(FeedbackState.EMPTY)
+
 	# 每次进入新拍时重置“本拍已处理输入”的标记。
 	_resolved_beat_index = -1
+	_current_beat_had_hit = false
+	_current_beat_had_early_input = false

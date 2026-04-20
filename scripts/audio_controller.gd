@@ -1,6 +1,8 @@
 extends Node2D
 class_name AudioController
 
+const GAME_BGM_BEAT_GRID_OFFSET_SECONDS: float = 0.0
+
 const SFX_SIGNAL_TOWER_FIRE: StringName = &"signal_tower_fire"
 const SFX_RECYCLER_SUCCESS: StringName = &"recycler_success"
 const SFX_RECYCLER_DESTROY: StringName = &"recycler_destroy"
@@ -52,8 +54,24 @@ func play_menu_bgm() -> void:
 	_play_bgm(STREAM_MENU_BGM)
 
 
-func play_game_bgm() -> void:
-	_play_bgm(STREAM_GAME_BGM)
+func play_game_bgm(restart: bool = false) -> void:
+	_play_bgm(STREAM_GAME_BGM, restart)
+
+
+func has_game_bgm_timeline() -> bool:
+	if bgm_player == null:
+		return false
+
+	return bgm_player.playing and bgm_player.stream == STREAM_GAME_BGM
+
+
+func get_game_bgm_beat_timeline_seconds() -> float:
+	assert(has_game_bgm_timeline(), "Game BGM timeline is only available while game BGM is playing.")
+
+	var playback_position: float = bgm_player.get_playback_position()
+	var mixed_playback_position: float = playback_position + AudioServer.get_time_since_last_mix()
+	# 扣掉输出延迟后，节拍 UI 更接近玩家真正听到的拍点。
+	return mixed_playback_position - AudioServer.get_output_latency() - GAME_BGM_BEAT_GRID_OFFSET_SECONDS
 
 
 func play_sfx(key: StringName) -> AudioStreamPlayer:
@@ -78,13 +96,16 @@ func play_result(success: bool) -> void:
 	play_sfx(SFX_RESULT_FAIL)
 
 
-func _play_bgm(stream: AudioStream) -> void:
+func _play_bgm(stream: AudioStream, restart: bool = false) -> void:
 	assert(bgm_player != null, "AudioController requires a BgmPlayer.")
 	assert(stream != null, "AudioController requires a valid BGM stream.")
 
 	# 已在播放目标 BGM 时保持当前状态，避免重复切回时从头播放。
-	if bgm_player.stream == stream and bgm_player.playing:
+	if bgm_player.stream == stream and bgm_player.playing and not restart:
 		return
+
+	if bgm_player.playing:
+		bgm_player.stop()
 
 	bgm_player.stream = stream
 	bgm_player.play()
