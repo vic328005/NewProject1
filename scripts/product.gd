@@ -2,9 +2,9 @@ extends TransportItem
 class_name Product
 
 const DEFAULT_PRODUCT_TYPE: String = CargoType.DEFAULT
-const PRODUCT_TEXTURE_1: Texture2D = preload("res://assets/images/product_1.svg")
-const PRODUCT_TEXTURE_2: Texture2D = preload("res://assets/images/product_2.svg")
-const PRODUCT_TEXTURE_3: Texture2D = preload("res://assets/images/product_3.svg")
+const PRODUCT_TEXTURE_1: Texture2D = preload("res://assets/images/product_1.png")
+const PRODUCT_TEXTURE_2: Texture2D = preload("res://assets/images/product_2.png")
+const PRODUCT_TEXTURE_3: Texture2D = preload("res://assets/images/product_3.png")
 
 @export var product_type: String = DEFAULT_PRODUCT_TYPE:
 	get:
