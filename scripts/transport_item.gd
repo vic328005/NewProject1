@@ -60,6 +60,34 @@ func place_at_cell(world: World, cell: Vector2i) -> void:
 	_is_registered_to_layer = true
 
 
+func store_in_machine(anchor_global_position: Vector2) -> void:
+	if _world == null:
+		return
+
+	_stop_move_tween()
+	if _is_registered_to_layer and _world.item_layer.get_cell(_registered_cell) == self:
+		_world.item_layer.erase_cell(_registered_cell)
+
+	_is_registered_to_layer = false
+	global_position = anchor_global_position
+
+
+func deploy_from_machine(target_cell: Vector2i) -> bool:
+	if _world == null:
+		return false
+
+	if _world.item_layer.has_cell(target_cell):
+		return false
+
+	_stop_move_tween()
+	_registered_cell = target_cell
+	_world.item_layer.set_cell(target_cell, self)
+	_is_registered_to_layer = true
+	var target_global_position: Vector2 = _world.to_global(_world.cell_to_world(target_cell))
+	_start_move_to_global_position(target_global_position)
+	return true
+
+
 func move_to_cell(target_cell: Vector2i) -> bool:
 	if _world == null:
 		return false

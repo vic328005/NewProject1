@@ -7,10 +7,6 @@ const TRIGGERED_PACKERS_KEY: StringName = &"packers"
 
 const ITEM_COMMAND_WAIT: StringName = &"WAIT"
 const ITEM_COMMAND_MOVE_TO_CELL: StringName = &"MOVE_TO_CELL"
-const ITEM_COMMAND_PACK_IN_PLACE: StringName = &"PACK_IN_PLACE"
-const ITEM_COMMAND_PRESS_IN_PLACE: StringName = &"PRESS_IN_PLACE"
-const ITEM_COMMAND_RECYCLE_PRODUCT: StringName = &"RECYCLE_PRODUCT"
-const ITEM_COMMAND_RECYCLE_CARGO: StringName = &"RECYCLE_CARGO"
 
 var _world: World
 
@@ -20,15 +16,19 @@ func _init(world: World) -> void:
 	_world = world
 
 
-# 拍点结算按“信号快照 -> 机器给脚下物体下命令 -> 提交阶段统一执行”运行。
+# 拍点结算按“信号快照 -> Output -> Transport -> Input -> Start -> Commit”运行。
 func resolve_beat(beat_index: int, signal_snapshot: Dictionary) -> void:
 	var beat_snapshot: Dictionary = _create_beat_snapshot(beat_index, signal_snapshot)
 	var machine_plan: Dictionary = _create_machine_plan(beat_snapshot)
-	var item_commands: Dictionary = _create_item_commands(beat_snapshot, machine_plan)
-	var move_success_by_id: Dictionary = _resolve_move_successes(beat_snapshot["items"], item_commands)
-	var did_recycler_progress: bool = _apply_item_commands(beat_index, item_commands, move_success_by_id)
+	var transport_item_ids: Dictionary = _collect_transport_item_ids(beat_snapshot["items"])
+	_apply_output_phase(beat_index)
+	var transport_commands: Dictionary = _create_transport_commands(beat_snapshot, machine_plan)
+	var transport_snapshot_items: Dictionary = _world.item_layer.get_cells().duplicate()
+	var move_success_by_id: Dictionary = _resolve_move_successes(transport_snapshot_items, transport_commands)
+	_apply_transport_phase(beat_index, transport_commands, move_success_by_id)
+	var did_recycler_progress: bool = _apply_input_phase(beat_index, beat_snapshot, transport_item_ids)
+	_apply_start_phase(beat_index, beat_snapshot)
 	_apply_sorter_toggles(machine_plan)
-	_apply_producer_spawns(beat_index, machine_plan)
 
 	if did_recycler_progress and _world.are_all_recyclers_completed():
 		GM.finish_game(true)
@@ -48,11 +48,9 @@ func _create_machine_plan(beat_snapshot: Dictionary) -> Dictionary:
 	var machine_plan: Dictionary = {
 		"sorter_toggle_cells": {},
 		"sorter_target_cells": {},
-		"producer_spawns": [],
 	}
 
 	_plan_sorters(beat_snapshot, machine_plan)
-	_plan_producers(beat_snapshot, machine_plan)
 	return machine_plan
 
 
@@ -72,34 +70,19 @@ func _plan_sorters(beat_snapshot: Dictionary, machine_plan: Dictionary) -> void:
 		machine_plan["sorter_target_cells"][cell] = _get_sorter_target_cell(sorter, should_toggle)
 
 
-func _plan_producers(beat_snapshot: Dictionary, machine_plan: Dictionary) -> void:
-	var items: Dictionary = beat_snapshot["items"]
-	var beat_index: int = int(beat_snapshot["beat_index"])
-	var producer_cells: Dictionary = _world.producer_layer.get_cells()
-
-	for cell in producer_cells.keys():
-		var producer: Producer = producer_cells[cell] as Producer
-		if producer == null or not is_instance_valid(producer):
+func _collect_transport_item_ids(items: Dictionary) -> Dictionary:
+	var transport_item_ids: Dictionary = {}
+	for item in items.values():
+		var transport_item: TransportItem = item as TransportItem
+		if transport_item == null or not is_instance_valid(transport_item):
 			continue
 
-		if not producer.should_trigger_on_beat(beat_index):
-			continue
+		transport_item_ids[transport_item.get_instance_id()] = true
 
-		if not producer.has_remaining_production():
-			continue
-
-		var target_cell: Vector2i = producer.get_target_cell()
-		if items.has(target_cell):
-			continue
-
-		machine_plan["producer_spawns"].append({
-			"producer": producer,
-			"target_cell": target_cell,
-			"cargo_type": producer.get_next_cargo_type(),
-		})
+	return transport_item_ids
 
 
-func _create_item_commands(beat_snapshot: Dictionary, machine_plan: Dictionary) -> Dictionary:
+func _create_transport_commands(beat_snapshot: Dictionary, machine_plan: Dictionary) -> Dictionary:
 	var item_commands: Dictionary = {}
 	var items: Dictionary = beat_snapshot["items"]
 
@@ -108,19 +91,21 @@ func _create_item_commands(beat_snapshot: Dictionary, machine_plan: Dictionary) 
 		if item == null or not is_instance_valid(item):
 			continue
 
-		item_commands[item.get_instance_id()] = _create_item_command(cell, item, beat_snapshot, machine_plan)
+		item_commands[item.get_instance_id()] = _create_transport_command(cell, item, beat_snapshot, machine_plan)
 
 	return item_commands
 
 
-func _create_item_command(cell: Vector2i, item: TransportItem, beat_snapshot: Dictionary, machine_plan: Dictionary) -> Dictionary:
+func _create_transport_command(cell: Vector2i, item: TransportItem, beat_snapshot: Dictionary, machine_plan: Dictionary) -> Dictionary:
+	var triggered_press_machines: Dictionary = beat_snapshot["triggered_press_machines"]
 	var press_machine: PressMachine = _world.press_machine_layer.get_cell(cell) as PressMachine
-	if press_machine != null and is_instance_valid(press_machine):
-		return _create_press_machine_command(cell, item, press_machine, beat_snapshot)
+	if press_machine != null and is_instance_valid(press_machine) and press_machine.allows_pass_through(item, triggered_press_machines.has(cell), int(beat_snapshot["beat_index"])):
+		return _create_move_command(item, cell, press_machine.get_target_cell(), {})
 
+	var triggered_packers: Dictionary = beat_snapshot["triggered_packers"]
 	var packer: Packer = _world.packer_layer.get_cell(cell) as Packer
-	if packer != null and is_instance_valid(packer):
-		return _create_packer_command(cell, item, packer, beat_snapshot)
+	if packer != null and is_instance_valid(packer) and packer.allows_pass_through(item, triggered_packers.has(cell)):
+		return _create_move_command(item, cell, packer.get_target_cell(), {})
 
 	var beat_index: int = int(beat_snapshot["beat_index"])
 	var belt: Belt = _world.belt_layer.get_cell(cell) as Belt
@@ -134,95 +119,9 @@ func _create_item_command(cell: Vector2i, item: TransportItem, beat_snapshot: Di
 
 	var recycler: Recycler = _world.recycler_layer.get_cell(cell) as Recycler
 	if recycler != null and is_instance_valid(recycler):
-		return _create_recycler_command(cell, item, recycler)
-
-	return _create_wait_command(item, cell)
-
-
-func _create_recycler_command(cell: Vector2i, item: TransportItem, recycler: Recycler) -> Dictionary:
-	var cargo: Cargo = item as Cargo
-	if cargo != null and is_instance_valid(cargo):
-		return _create_command(
-			ITEM_COMMAND_RECYCLE_CARGO,
-			item,
-			cell,
-			{
-				"recycler": recycler,
-			}
-		)
-
-	var product: Product = item as Product
-	if product != null and is_instance_valid(product) and recycler.can_accept_product(product.product_type):
-		return _create_command(
-			ITEM_COMMAND_RECYCLE_PRODUCT,
-			item,
-			cell,
-			{
-				"recycler": recycler,
-			}
-		)
-
-	return _create_wait_command(item, cell)
-
-
-func _create_press_machine_command(cell: Vector2i, item: TransportItem, press_machine: PressMachine, beat_snapshot: Dictionary) -> Dictionary:
-	var cargo: Cargo = item as Cargo
-	if cargo == null or not is_instance_valid(cargo):
 		return _create_wait_command(item, cell)
 
-	if press_machine.is_pressing():
-		var pressed_cargo: Cargo = press_machine.get_pressed_cargo()
-		if pressed_cargo != cargo:
-			return _create_wait_command(item, cell)
-
-		if not press_machine.has_finished_press(int(beat_snapshot["beat_index"])):
-			return _create_wait_command(item, cell)
-
-		return _create_move_command(
-			item,
-			cell,
-			press_machine.get_target_cell(),
-			{
-				"clear_press_machine": press_machine,
-			}
-		)
-
-	var triggered_press_machines: Dictionary = beat_snapshot["triggered_press_machines"]
-	if triggered_press_machines.has(cell):
-		return _create_command(
-			ITEM_COMMAND_PRESS_IN_PLACE,
-			item,
-			cell,
-			{
-				"press_machine": press_machine,
-				"result_type": press_machine.cargo_type,
-			}
-		)
-
-	return _create_move_command(item, cell, press_machine.get_target_cell(), {})
-
-
-func _create_packer_command(cell: Vector2i, item: TransportItem, packer: Packer, beat_snapshot: Dictionary) -> Dictionary:
-	var product: Product = item as Product
-	if product != null and is_instance_valid(product):
-		return _create_move_command(item, cell, packer.get_target_cell(), {})
-
-	var cargo: Cargo = item as Cargo
-	if cargo == null or not is_instance_valid(cargo):
-		return _create_wait_command(item, cell)
-
-	var triggered_packers: Dictionary = beat_snapshot["triggered_packers"]
-	if triggered_packers.has(cell):
-		return _create_command(
-			ITEM_COMMAND_PACK_IN_PLACE,
-			item,
-			cell,
-			{
-				"result_type": cargo.cargo_type,
-			}
-		)
-
-	return _create_move_command(item, cell, packer.get_target_cell(), {})
+	return _create_wait_command(item, cell)
 
 
 func _create_wait_command(item: TransportItem, from_cell: Vector2i) -> Dictionary:
@@ -336,9 +235,6 @@ func _will_cell_be_released(cell: Vector2i, snapshot_items: Dictionary, item_com
 
 	var occupant_command: Dictionary = item_commands[occupant_id]
 	var occupant_command_type: StringName = occupant_command["type"]
-	if occupant_command_type == ITEM_COMMAND_RECYCLE_PRODUCT or occupant_command_type == ITEM_COMMAND_RECYCLE_CARGO:
-		return true
-
 	if not _is_move_command(occupant_command_type):
 		return false
 
@@ -352,62 +248,7 @@ func _will_cell_be_released(cell: Vector2i, snapshot_items: Dictionary, item_com
 	)
 
 
-func _apply_item_commands(beat_index: int, item_commands: Dictionary, move_success_by_id: Dictionary) -> bool:
-	var did_recycler_progress: bool = false
-
-	for command in item_commands.values():
-		var item: TransportItem = command["item"] as TransportItem
-		if item == null or not is_instance_valid(item):
-			continue
-
-		item.mark_resolved_on_beat(beat_index)
-
-	for command in item_commands.values():
-		var command_type: StringName = command["type"]
-		if _is_move_command(command_type):
-			continue
-
-		var item: TransportItem = command["item"] as TransportItem
-		if item == null or not is_instance_valid(item):
-			continue
-
-		match command_type:
-			ITEM_COMMAND_PACK_IN_PLACE:
-				var cargo_to_pack: Cargo = item as Cargo
-				if cargo_to_pack == null or not is_instance_valid(cargo_to_pack):
-					continue
-
-				var packed_cell: Vector2i = command["from_cell"]
-				var product_type: String = String(command["result_type"])
-				cargo_to_pack.remove_from_world()
-				var product: Product = _world.spawn_product(packed_cell, product_type)
-				if product != null:
-					product.mark_resolved_on_beat(beat_index)
-			ITEM_COMMAND_PRESS_IN_PLACE:
-				var cargo_to_press: Cargo = item as Cargo
-				var press_machine: PressMachine = command["press_machine"] as PressMachine
-				if cargo_to_press == null or not is_instance_valid(cargo_to_press):
-					continue
-
-				cargo_to_press.cargo_type = String(command["result_type"])
-				if press_machine != null and is_instance_valid(press_machine) and not press_machine.is_pressing():
-					press_machine.begin_press(cargo_to_press, beat_index)
-			ITEM_COMMAND_RECYCLE_CARGO:
-				var recycler_for_cargo: Recycler = command["recycler"] as Recycler
-				var cargo_to_destroy: Cargo = item as Cargo
-				if recycler_for_cargo != null and is_instance_valid(recycler_for_cargo) and cargo_to_destroy != null and is_instance_valid(cargo_to_destroy):
-					var cargo_type: String = cargo_to_destroy.cargo_type
-					cargo_to_destroy.remove_from_world()
-					recycler_for_cargo.log_cargo_destroyed(cargo_type)
-			ITEM_COMMAND_RECYCLE_PRODUCT:
-				var recycler_for_product: Recycler = command["recycler"] as Recycler
-				var product_to_collect: Product = item as Product
-				if recycler_for_product != null and is_instance_valid(recycler_for_product) and product_to_collect != null and is_instance_valid(product_to_collect):
-					if recycler_for_product.collect_product(product_to_collect):
-						did_recycler_progress = true
-			_:
-				pass
-
+func _apply_transport_phase(beat_index: int, item_commands: Dictionary, move_success_by_id: Dictionary) -> void:
 	var successful_moves: Array[Dictionary] = []
 	for item_id in move_success_by_id.keys():
 		if not bool(move_success_by_id[item_id]):
@@ -418,6 +259,7 @@ func _apply_item_commands(beat_index: int, item_commands: Dictionary, move_succe
 		if item == null or not is_instance_valid(item):
 			continue
 
+		item.mark_resolved_on_beat(beat_index)
 		item.begin_parallel_move()
 		successful_moves.append(command)
 
@@ -427,12 +269,7 @@ func _apply_item_commands(beat_index: int, item_commands: Dictionary, move_succe
 			continue
 
 		item.complete_parallel_move(command["target_cell"])
-
-		var clear_press_machine: PressMachine = command.get("clear_press_machine") as PressMachine
-		if clear_press_machine != null and is_instance_valid(clear_press_machine):
-			clear_press_machine.clear_pressed_cargo()
-
-	return did_recycler_progress
+		item.mark_resolved_on_beat(beat_index)
 
 
 func _apply_sorter_toggles(machine_plan: Dictionary) -> void:
@@ -445,32 +282,199 @@ func _apply_sorter_toggles(machine_plan: Dictionary) -> void:
 		sorter.toggle_output()
 
 
-func _apply_producer_spawns(beat_index: int, machine_plan: Dictionary) -> void:
-	var producer_spawns: Array = machine_plan["producer_spawns"]
+func _apply_output_phase(beat_index: int) -> void:
+	var output_requests: Array = _collect_output_requests(beat_index)
 	var target_counts: Dictionary = {}
 
-	for spawn_request in producer_spawns:
-		var target_cell: Vector2i = spawn_request["target_cell"]
+	for request in output_requests:
+		var target_cell: Vector2i = request["target_cell"]
 		target_counts[target_cell] = int(target_counts.get(target_cell, 0)) + 1
 
-	for spawn_request in producer_spawns:
-		var producer: Producer = spawn_request["producer"] as Producer
-		if producer == null or not is_instance_valid(producer):
-			continue
-
-		var target_cell: Vector2i = spawn_request["target_cell"]
+	for request in output_requests:
+		var target_cell: Vector2i = request["target_cell"]
 		if int(target_counts.get(target_cell, 0)) != 1:
 			continue
 
 		if _world.item_layer.has_cell(target_cell):
 			continue
 
-		var cargo: Cargo = _world.spawn_cargo(target_cell, String(spawn_request["cargo_type"]))
-		if cargo == null:
+		var output_kind: StringName = request["kind"]
+		match output_kind:
+			&"producer":
+				var producer: Producer = request["machine"] as Producer
+				if producer == null or not is_instance_valid(producer):
+					continue
+
+				var produced_cargo: Cargo = _world.spawn_cargo(target_cell, producer.get_pending_output_cargo_type())
+				if produced_cargo == null:
+					continue
+
+				produced_cargo.mark_resolved_on_beat(beat_index)
+				producer.commit_output_success()
+			&"press_machine":
+				var press_machine: PressMachine = request["machine"] as PressMachine
+				if press_machine == null or not is_instance_valid(press_machine):
+					continue
+
+				var released_cargo: Cargo = press_machine.release_output(target_cell)
+				if released_cargo == null:
+					continue
+
+				released_cargo.mark_resolved_on_beat(beat_index)
+			&"packer":
+				var packer: Packer = request["machine"] as Packer
+				if packer == null or not is_instance_valid(packer):
+					continue
+
+				var product: Product = _world.spawn_product(target_cell, packer.get_pending_output_product_type())
+				if product == null:
+					continue
+
+				product.mark_resolved_on_beat(beat_index)
+				packer.commit_output_success()
+			_:
+				pass
+
+
+func _collect_output_requests(beat_index: int) -> Array:
+	var output_requests: Array = []
+
+	var producer_cells: Dictionary = _world.producer_layer.get_cells()
+	for cell in producer_cells.keys():
+		var producer: Producer = producer_cells[cell] as Producer
+		if producer == null or not is_instance_valid(producer):
 			continue
 
-		cargo.mark_resolved_on_beat(beat_index)
-		producer.mark_produced()
+		if not producer.can_output_on_beat(beat_index):
+			continue
+
+		output_requests.append({
+			"kind": &"producer",
+			"machine": producer,
+			"target_cell": producer.get_target_cell(),
+		})
+
+	var press_machine_cells: Dictionary = _world.press_machine_layer.get_cells()
+	for cell in press_machine_cells.keys():
+		var press_machine: PressMachine = press_machine_cells[cell] as PressMachine
+		if press_machine == null or not is_instance_valid(press_machine):
+			continue
+
+		if not press_machine.can_output_on_beat(beat_index):
+			continue
+
+		output_requests.append({
+			"kind": &"press_machine",
+			"machine": press_machine,
+			"target_cell": press_machine.get_target_cell(),
+		})
+
+	var packer_cells: Dictionary = _world.packer_layer.get_cells()
+	for cell in packer_cells.keys():
+		var packer: Packer = packer_cells[cell] as Packer
+		if packer == null or not is_instance_valid(packer):
+			continue
+
+		if not packer.can_output_on_beat(beat_index):
+			continue
+
+		output_requests.append({
+			"kind": &"packer",
+			"machine": packer,
+			"target_cell": packer.get_target_cell(),
+		})
+
+	return output_requests
+
+
+func _apply_input_phase(beat_index: int, beat_snapshot: Dictionary, transport_item_ids: Dictionary) -> bool:
+	var did_recycler_progress: bool = false
+	var current_items: Dictionary = _world.item_layer.get_cells().duplicate()
+	var triggered_press_machines: Dictionary = beat_snapshot["triggered_press_machines"]
+	var triggered_packers: Dictionary = beat_snapshot["triggered_packers"]
+
+	for cell in current_items.keys():
+		var item: TransportItem = current_items[cell] as TransportItem
+		if item == null or not is_instance_valid(item):
+			continue
+
+		if not transport_item_ids.has(item.get_instance_id()):
+			continue
+
+		var recycler: Recycler = _world.recycler_layer.get_cell(cell) as Recycler
+		if recycler != null and is_instance_valid(recycler):
+			if _apply_recycler_input(item, recycler):
+				item.mark_resolved_on_beat(beat_index)
+				if item is Product:
+					did_recycler_progress = true
+				continue
+
+		var cargo: Cargo = item as Cargo
+		var press_machine: PressMachine = _world.press_machine_layer.get_cell(cell) as PressMachine
+		if cargo != null and is_instance_valid(cargo) and press_machine != null and is_instance_valid(press_machine) and press_machine.can_accept_input(triggered_press_machines.has(cell)):
+			press_machine.accept_input(cargo)
+			cargo.mark_resolved_on_beat(beat_index)
+			continue
+
+		var packer: Packer = _world.packer_layer.get_cell(cell) as Packer
+		if cargo != null and is_instance_valid(cargo) and packer != null and is_instance_valid(packer) and packer.can_accept_input(triggered_packers.has(cell)):
+			packer.accept_input(cargo)
+			cargo.mark_resolved_on_beat(beat_index)
+
+	return did_recycler_progress
+
+
+func _apply_recycler_input(item: TransportItem, recycler: Recycler) -> bool:
+	var cargo: Cargo = item as Cargo
+	if cargo != null and is_instance_valid(cargo):
+		var cargo_type: String = cargo.cargo_type
+		cargo.remove_from_world()
+		recycler.log_cargo_destroyed(cargo_type)
+		return true
+
+	var product: Product = item as Product
+	if product != null and is_instance_valid(product):
+		return recycler.collect_product(product)
+
+	return false
+
+
+func _apply_start_phase(beat_index: int, beat_snapshot: Dictionary) -> void:
+	var producer_cells: Dictionary = _world.producer_layer.get_cells()
+	for cell in producer_cells.keys():
+		var producer: Producer = producer_cells[cell] as Producer
+		if producer == null or not is_instance_valid(producer):
+			continue
+
+		if producer.can_start_cycle(beat_index):
+			producer.start_cycle(beat_index)
+
+	var triggered_press_machines: Dictionary = beat_snapshot["triggered_press_machines"]
+	var press_machine_cells: Dictionary = _world.press_machine_layer.get_cells()
+	for cell in press_machine_cells.keys():
+		var press_machine: PressMachine = press_machine_cells[cell] as PressMachine
+		if press_machine == null or not is_instance_valid(press_machine):
+			continue
+
+		if not press_machine.can_start_cycle(beat_index, triggered_press_machines.has(cell)):
+			continue
+
+		var pressed_cargo: Cargo = press_machine.get_pressed_cargo()
+		if pressed_cargo == null or not is_instance_valid(pressed_cargo):
+			continue
+
+		pressed_cargo.cargo_type = press_machine.cargo_type
+		press_machine.begin_press(pressed_cargo, beat_index)
+
+	var triggered_packers: Dictionary = beat_snapshot["triggered_packers"]
+	var packer_cells: Dictionary = _world.packer_layer.get_cells()
+	for cell in packer_cells.keys():
+		var packer: Packer = packer_cells[cell] as Packer
+		if packer == null or not is_instance_valid(packer):
+			continue
+
+		if packer.can_start_cycle(beat_index, triggered_packers.has(cell)):
+			packer.start_cycle(beat_index)
 
 
 func _get_sorter_target_cell(sorter: Sorter, should_toggle: bool) -> Vector2i:

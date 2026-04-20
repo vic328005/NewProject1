@@ -25,6 +25,8 @@ var _world: World
 var _registered_cell: Vector2i
 var _is_registered_to_layer: bool = false
 var _next_production_index: int = 0
+var _pending_output_cargo_type: String = ""
+var _output_ready_beat: int = -1
 
 
 func _ready() -> void:
@@ -60,6 +62,35 @@ func get_next_cargo_type() -> String:
 func mark_produced() -> void:
 	assert(has_remaining_production(), "Producer cannot advance production past the configured sequence.")
 	_next_production_index += 1
+
+
+func has_pending_output() -> bool:
+	return _pending_output_cargo_type != ""
+
+
+func can_output_on_beat(beat_index: int) -> bool:
+	return has_pending_output() and beat_index >= _output_ready_beat
+
+
+func get_pending_output_cargo_type() -> String:
+	assert(has_pending_output(), "Producer has no pending output.")
+	return _pending_output_cargo_type
+
+
+func commit_output_success() -> void:
+	_pending_output_cargo_type = ""
+	_output_ready_beat = -1
+
+
+func can_start_cycle(beat_index: int) -> bool:
+	return should_trigger_on_beat(beat_index) and has_remaining_production() and not has_pending_output()
+
+
+func start_cycle(beat_index: int) -> void:
+	assert(can_start_cycle(beat_index), "Producer cannot start a new cycle on this beat.")
+	_pending_output_cargo_type = get_next_cargo_type()
+	_output_ready_beat = beat_index + 1
+	mark_produced()
 
 
 func _register_to_producer_layer() -> void:

@@ -42,6 +42,7 @@ var _is_registered_to_layer: bool = false
 var _pressed_cargo: Cargo
 var _press_start_beat: int = -1
 var _is_pressing: bool = false
+var _output_ready_beat: int = -1
 var _sprite: Sprite2D
 
 
@@ -76,35 +77,110 @@ func should_trigger_on_beat(beat_index: int) -> bool:
 
 
 func is_pressing() -> bool:
-	if _is_pressing and not is_instance_valid(_pressed_cargo):
+	if _has_invalid_pressed_cargo():
 		clear_pressed_cargo()
 
 	return _is_pressing
 
 
 func get_pressed_cargo() -> Cargo:
-	if not is_pressing():
+	if not _has_valid_pressed_cargo():
 		return null
 
 	return _pressed_cargo
 
 
 func has_finished_press(current_beat_index: int) -> bool:
-	return is_pressing() and current_beat_index > _press_start_beat
+	_refresh_output_state(current_beat_index)
+	return _has_valid_pressed_cargo() and not _is_pressing and _output_ready_beat >= 0
+
+
+func has_pending_output() -> bool:
+	return _has_valid_pressed_cargo() and _output_ready_beat >= 0
+
+
+func can_output_on_beat(beat_index: int) -> bool:
+	_refresh_output_state(beat_index)
+	return has_pending_output() and not _is_pressing and beat_index >= _output_ready_beat
+
+
+func can_accept_input(is_triggered: bool) -> bool:
+	return is_triggered and not _has_valid_pressed_cargo()
+
+
+func accept_input(cargo: Cargo) -> void:
+	assert(cargo != null and is_instance_valid(cargo), "PressMachine requires a valid Cargo to accept input.")
+	assert(not _has_valid_pressed_cargo(), "PressMachine cannot accept input while occupied.")
+	cargo.store_in_machine(global_position)
+	_pressed_cargo = cargo
+	_press_start_beat = -1
+	_output_ready_beat = -1
+	_is_pressing = false
+
+
+func can_start_cycle(beat_index: int, is_triggered: bool) -> bool:
+	_refresh_output_state(beat_index)
+	return is_triggered and _has_valid_pressed_cargo() and not _is_pressing and _output_ready_beat < 0
+
+
+func release_output(target_cell: Vector2i) -> Cargo:
+	if not _has_valid_pressed_cargo():
+		return null
+
+	var cargo: Cargo = _pressed_cargo
+	if not cargo.deploy_from_machine(target_cell):
+		return null
+
+	clear_pressed_cargo()
+	return cargo
+
+
+func allows_pass_through(item: TransportItem, is_triggered: bool, beat_index: int) -> bool:
+	_refresh_output_state(beat_index)
+	if _has_valid_pressed_cargo():
+		return false
+
+	if item is Cargo and is_triggered:
+		return false
+
+	return true
 
 
 func begin_press(cargo: Cargo, beat_index: int) -> void:
 	assert(cargo != null and is_instance_valid(cargo), "PressMachine requires a valid Cargo to start pressing.")
-	assert(not is_pressing(), "PressMachine cannot start pressing while busy.")
+	assert(_pressed_cargo == cargo, "PressMachine can only start pressing its held Cargo.")
+	assert(not _is_pressing, "PressMachine cannot start pressing while busy.")
 	_pressed_cargo = cargo
 	_press_start_beat = beat_index
+	_output_ready_beat = beat_index + 1
 	_is_pressing = true
 
 
 func clear_pressed_cargo() -> void:
 	_pressed_cargo = null
 	_press_start_beat = -1
+	_output_ready_beat = -1
 	_is_pressing = false
+
+
+func _has_valid_pressed_cargo() -> bool:
+	return _pressed_cargo != null and is_instance_valid(_pressed_cargo)
+
+
+func _has_invalid_pressed_cargo() -> bool:
+	return _pressed_cargo != null and not is_instance_valid(_pressed_cargo)
+
+
+func _refresh_output_state(beat_index: int) -> void:
+	if _has_invalid_pressed_cargo():
+		clear_pressed_cargo()
+		return
+
+	if not _has_valid_pressed_cargo():
+		return
+
+	if _is_pressing and _output_ready_beat >= 0 and beat_index >= _output_ready_beat:
+		_is_pressing = false
 
 
 func _register_to_press_machine_layer() -> void:

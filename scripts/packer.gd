@@ -26,6 +26,9 @@ var _world: World
 var _registered_cell: Vector2i
 var _is_registered_to_layer: bool = false
 var _sprite: Sprite2D
+var _held_cargo: Cargo
+var _pending_output_product_type: String = ""
+var _output_ready_beat: int = -1
 
 
 func _ready() -> void:
@@ -52,6 +55,67 @@ func get_registered_cell() -> Vector2i:
 
 func get_target_cell() -> Vector2i:
 	return _registered_cell + _direction_to_offset(facing)
+
+
+func has_pending_output() -> bool:
+	return _pending_output_product_type != ""
+
+
+func can_output_on_beat(beat_index: int) -> bool:
+	return has_pending_output() and beat_index >= _output_ready_beat
+
+
+func get_pending_output_product_type() -> String:
+	assert(has_pending_output(), "Packer has no pending output.")
+	return _pending_output_product_type
+
+
+func commit_output_success() -> void:
+	_pending_output_product_type = ""
+	_output_ready_beat = -1
+
+
+func can_accept_input(is_triggered: bool) -> bool:
+	_clear_invalid_held_cargo()
+	return is_triggered and _held_cargo == null and not has_pending_output()
+
+
+func accept_input(cargo: Cargo) -> void:
+	assert(cargo != null and is_instance_valid(cargo), "Packer requires a valid Cargo to accept input.")
+	_clear_invalid_held_cargo()
+	assert(_held_cargo == null, "Packer cannot accept input while occupied.")
+	cargo.store_in_machine(global_position)
+	_held_cargo = cargo
+
+
+func can_start_cycle(beat_index: int, is_triggered: bool) -> bool:
+	_clear_invalid_held_cargo()
+	return is_triggered and _held_cargo != null and is_instance_valid(_held_cargo) and not has_pending_output()
+
+
+func start_cycle(beat_index: int) -> void:
+	_clear_invalid_held_cargo()
+	assert(_held_cargo != null and is_instance_valid(_held_cargo), "Packer requires held Cargo to start packing.")
+	_pending_output_product_type = _held_cargo.cargo_type
+	_output_ready_beat = beat_index + 1
+	_held_cargo.remove_from_world()
+	_held_cargo = null
+
+
+func allows_pass_through(item: TransportItem, is_triggered: bool) -> bool:
+	_clear_invalid_held_cargo()
+	if _held_cargo != null or has_pending_output():
+		return false
+
+	if item is Cargo and is_triggered:
+		return false
+
+	return true
+
+
+func _clear_invalid_held_cargo() -> void:
+	if _held_cargo != null and not is_instance_valid(_held_cargo):
+		_held_cargo = null
 
 
 func _register_to_packer_layer() -> void:
