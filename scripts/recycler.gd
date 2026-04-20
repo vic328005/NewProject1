@@ -3,8 +3,6 @@ class_name Recycler
 
 signal goal_completed(state: Dictionary)
 
-const IDLE_COLOR: Color = Color(0.93, 0.28, 0.34, 1.0)
-const COMPLETE_COLOR: Color = Color(0.27, 0.74, 0.42, 1.0)
 const OUTLINE_COLOR: Color = Color(0.15, 0.09, 0.07, 1.0)
 const COUNT_BG_COLOR: Color = Color(0.09, 0.11, 0.16, 0.92)
 const COUNT_TEXT_COLOR: Color = Color(0.97, 0.95, 0.88, 1.0)
@@ -19,11 +17,13 @@ const COMPLETE_RING_COLOR: Color = Color(1.0, 0.93, 0.61, 1.0)
 var _target_states: Array[Dictionary] = []
 var _has_emitted_goal_completed: bool = false
 var _font: Font
-@onready var _sprite: Sprite2D = $Sprite2D
+@onready var _animated_sprite: AnimatedSprite2D = $AnimatedSprite2D
 
 
 func _ready() -> void:
 	super._ready()
+	if _animated_sprite != null and not _animated_sprite.is_playing():
+		_animated_sprite.play()
 	_rebuild_target_states()
 	_update_visual_state()
 
@@ -150,9 +150,6 @@ func get_status_snapshot() -> Dictionary:
 
 
 func _update_visual_state() -> void:
-	if _sprite != null:
-		_sprite.modulate = COMPLETE_COLOR if is_completed() else IDLE_COLOR
-
 	queue_redraw()
 
 
