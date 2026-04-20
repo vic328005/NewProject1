@@ -2,6 +2,7 @@
   "level_id": "level03",
   "display_name": "生产打包产线",
   "beat_bpm": 120,
+  "failure_beat_limit": 60,
   "cells": [
     {
       "x": 5,

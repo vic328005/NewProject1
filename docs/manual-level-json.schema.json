@@ -22,6 +22,9 @@
       "type": "number",
       "exclusiveMinimum": 0
     },
+    "failure_beat_limit": {
+      "$ref": "#/$defs/positiveIntegerNumber"
+    },
     "cells": {
       "type": "array",
       "items": {

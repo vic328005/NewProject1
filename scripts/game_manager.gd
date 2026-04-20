@@ -3,7 +3,7 @@ class_name GameManager
 
 const UI_MODULE_SCENE: PackedScene = preload("res://prefabs/ui/ui_module.tscn")
 # 达到这个拍数仍未完成关卡时，直接判定失败。
-const FAILURE_BEAT_LIMIT: int = 60
+const DEFAULT_FAILURE_BEAT_LIMIT: int = LevelData.DEFAULT_FAILURE_BEAT_LIMIT
 
 enum GameState {
 	MENU,
@@ -21,6 +21,7 @@ var ui: UiModule = null
 var level_loader: LevelLoader
 var state: int = GameState.MENU
 var current_beat: int = 0
+var current_level_failure_beat_limit: int = DEFAULT_FAILURE_BEAT_LIMIT
 
 
 func _init() -> void:
@@ -79,6 +80,7 @@ func _start_game_with_level_path(level_path: String) -> Dictionary:
 
 	_close_flow_panels()
 	current_beat = 0
+	current_level_failure_beat_limit = level_data.failure_beat_limit
 	state = GameState.PLAYING
 
 	# 以关卡节奏参数重置节拍器，并打开运行中需要的 UI。
@@ -114,7 +116,7 @@ func finish_game(success: bool) -> void:
 		total_required_count - remaining_required_count,
 		total_required_count,
 		current_beat,
-		FAILURE_BEAT_LIMIT
+		current_level_failure_beat_limit
 	)
 
 
@@ -219,6 +221,7 @@ func _clear_session() -> void:
 		world.clear_level_content()
 
 	current_beat = 0
+	current_level_failure_beat_limit = DEFAULT_FAILURE_BEAT_LIMIT
 
 
 func _close_flow_panels() -> void:
@@ -253,7 +256,7 @@ func _on_beat_fired(beat_index: int, _beat_time: float) -> void:
 
 	current_beat = beat_index
 	# 超过失败拍数上限后，直接结束当前局。
-	if current_beat >= FAILURE_BEAT_LIMIT:
+	if current_beat >= current_level_failure_beat_limit:
 		finish_game(false)
 
 

@@ -5,7 +5,7 @@ signal beat_fired(beat_index: int, beat_time: float)
 
 const MIN_BPM: float = 1.0
 const MAX_BPM: float = 240.0
-const DEFAULT_BPM: float = 60.0
+const DEFAULT_BPM: float = 160.0
 
 var _bpm: float = DEFAULT_BPM
 

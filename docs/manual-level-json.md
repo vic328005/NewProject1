@@ -34,6 +34,7 @@ var start_level_path: String = "res://levels/level03.json"
 - `level_id`
 - `display_name`
 - `beat_bpm`
+- `failure_beat_limit`
 - `cells`
 
 任意未知字段都会直接报错，文件不会被加载。
@@ -76,12 +77,23 @@ var start_level_path: String = "res://levels/level03.json"
 - 可选
 - 必须是数字
 - 必须大于 `0`
-- 省略时默认值为 `60.0`
+- 省略时默认值为 `160.0`
 
 补充说明：
 
 - `LevelData` 校验层只要求它大于 `0`
 - 真正进入节拍器后，`BeatConductor` 还会把 BPM 限制在 `1` 到 `240` 之间
+
+#### `failure_beat_limit`
+
+- 可选
+- 必须是正整数
+- 省略时默认值为 `60`
+
+运行语义：
+
+- 当前拍数达到这个值后，如果关卡仍未完成，会直接判定失败
+- 结果面板里的 `当前拍数 x / y` 中，后面的 `y` 也会显示这个值
 
 #### `cells`
 
@@ -530,6 +542,7 @@ target 字段规则：
   "level_id": "level03",
   "display_name": "生产打包产线",
   "beat_bpm": 120,
+  "failure_beat_limit": 60,
   "cells": [
     {
       "x": 5,
@@ -638,8 +651,9 @@ target 字段规则：
 ## 手写 JSON 前的快速检查清单
 
 - 根节点是不是 object
-- 顶层字段是不是只用了允许的四个
+- 顶层字段是不是只用了允许的五个
 - `level_id` / `display_name` 是否非空
+- `failure_beat_limit` 如果填写了，是否为正整数
 - `cells` 是否只包含非空格
 - 坐标是否重复
 - 是否错误地把多个 machine 写进同一格

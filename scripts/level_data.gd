@@ -5,6 +5,7 @@ const TOP_LEVEL_KEYS := [
 	"level_id",
 	"display_name",
 	"beat_bpm",
+	"failure_beat_limit",
 	"cells",
 ]
 const CELL_KEYS := ["x", "y", "belt", "item", "producer", "recycler", "signal_tower", "press_machine", "packer"]
@@ -18,11 +19,13 @@ const PRESS_MACHINE_KEYS := ["facing", "cargo_type", "beat_interval"]
 const PACKER_KEYS := ["facing"]
 const CARGO_TYPE_VALUES: Array[String] = CargoType.VALUES
 const ITEM_KIND_VALUES := ["CARGO", "PRODUCT"]
+const DEFAULT_FAILURE_BEAT_LIMIT: int = 60
 static var _last_error_message: String = ""
 
 var level_id: String = ""
 var display_name: String = ""
-var beat_bpm: float = 60.0
+var beat_bpm: float = 160.0
+var failure_beat_limit: int = DEFAULT_FAILURE_BEAT_LIMIT
 var cells: Array[Dictionary] = []
 
 
@@ -93,6 +96,12 @@ static func from_dictionary(raw_data: Dictionary, source_label: String = "<memor
 			return _validation_error(source_label, "beat_bpm 必须大于 0")
 
 		level_data.beat_bpm = normalized_beat_bpm
+
+	if raw_data.has("failure_beat_limit"):
+		if not _has_positive_integer_number(raw_data, "failure_beat_limit"):
+			return _validation_error(source_label, "failure_beat_limit 必须是正整数")
+
+		level_data.failure_beat_limit = int(raw_data["failure_beat_limit"])
 
 	var seen_cells: Dictionary = {}
 	var raw_cells: Array = Array(raw_data["cells"])
