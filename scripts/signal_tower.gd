@@ -79,6 +79,10 @@ func _on_metronome_hit(payload: Variant) -> void:
 	_world.add_level_content(signal_wave)
 	# 信号波创建后立刻生效，避免再维护“待激活”状态。
 	signal_wave.activate_in_signal_layer()
+	if is_instance_valid(GM.event):
+		GM.event.emit_event(EventDef.signal_tower_fired, {
+			"beat_index": beat_index,
+		})
 
 
 func _register_to_signal_tower_layer() -> void:
