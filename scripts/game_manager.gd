@@ -45,28 +45,39 @@ func _ready() -> void:
 
 
 func start_game() -> void:
+	_start_game_with_level_path(config.start_level_path)
+
+
+func start_game_from_external_level(level_path: String) -> Dictionary:
+	return _start_game_with_level_path(level_path)
+
+
+func _start_game_with_level_path(level_path: String) -> Dictionary:
 	assert(config != null, "Config must be initialized before starting the game.")
 	assert(is_instance_valid(world), "World must exist before starting the game.")
 	assert(is_instance_valid(beats), "BeatConductor must exist before starting the game.")
 	assert(is_instance_valid(ui), "UI module must exist before starting the game.")
 
-	# 开局前先清掉菜单、运行时 UI 和上一局残留状态。
-	_close_flow_panels()
+	# 开局前先停掉节拍并关闭运行时界面，只有真正加载成功后才收起主菜单。
+	beats.stop()
+	_close_result_panel()
 	_close_runtime_ui()
-	_clear_session()
 
 	assert(level_loader != null, "LevelLoader must be initialized before starting the game.")
-	var level_data: LevelData = level_loader.load_level_file_into_world(config.start_level_path, world)
+	var level_data: LevelData = level_loader.load_level_file_into_world(level_path, world)
 	if level_data == null:
-		push_error("Failed to load start level: %s" % config.start_level_path)
-		_show_main_menu()
-		return
+		_clear_session()
+		state = GameState.MENU
+		return _failure_start_result(_get_level_load_error_message(level_path))
 
 	if world.get_total_recycler_required_count() <= 0:
-		push_error("Level has no recycler goals: %s" % config.start_level_path)
-		_show_main_menu()
-		return
+		var error_message: String = "关卡缺少回收目标，无法开始游戏"
+		push_error("%s：%s" % [error_message, level_path])
+		_clear_session()
+		state = GameState.MENU
+		return _failure_start_result(error_message)
 
+	_close_flow_panels()
 	current_beat = 0
 	state = GameState.PLAYING
 
@@ -74,6 +85,7 @@ func start_game() -> void:
 	beats.reset(level_data.beat_bpm)
 	ui.open(UIDef.metronome_panel)
 	beats.start()
+	return _success_start_result()
 
 
 func finish_game(success: bool) -> void:
@@ -84,6 +96,8 @@ func finish_game(success: bool) -> void:
 	assert(is_instance_valid(ui), "UI module must exist before finishing the game.")
 
 	state = GameState.RESULT
+	if is_instance_valid(audio):
+		audio.play_result(success)
 	beats.stop()
 	_close_runtime_ui()
 	_close_menu_panel()
@@ -237,3 +251,25 @@ func _on_beat_fired(beat_index: int, _beat_time: float) -> void:
 	# 超过失败拍数上限后，直接结束当前局。
 	if current_beat >= FAILURE_BEAT_LIMIT:
 		finish_game(false)
+
+
+func _get_level_load_error_message(level_path: String) -> String:
+	var error_message: String = level_loader.get_last_error_message()
+	if not error_message.is_empty():
+		return error_message
+
+	return "加载关卡失败：%s" % level_path
+
+
+func _success_start_result() -> Dictionary:
+	return {
+		"success": true,
+		"message": "",
+	}
+
+
+func _failure_start_result(message: String) -> Dictionary:
+	return {
+		"success": false,
+		"message": message,
+	}

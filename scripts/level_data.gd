@@ -18,6 +18,7 @@ const PRESS_MACHINE_KEYS := ["facing", "cargo_type", "beat_interval"]
 const PACKER_KEYS := ["facing"]
 const CARGO_TYPE_VALUES: Array[String] = CargoType.VALUES
 const ITEM_KIND_VALUES := ["CARGO", "PRODUCT"]
+static var _last_error_message: String = ""
 
 var level_id: String = ""
 var display_name: String = ""
@@ -25,34 +26,40 @@ var beat_bpm: float = 60.0
 var cells: Array[Dictionary] = []
 
 
+static func clear_last_error_message() -> void:
+	_last_error_message = ""
+
+
+static func get_last_error_message() -> String:
+	return _last_error_message
+
+
 static func load_from_file(path: String) -> LevelData:
+	clear_last_error_message()
 	if not FileAccess.file_exists(path):
-		push_error("Level file does not exist: %s" % path)
+		_report_error("找不到关卡文件：%s" % path)
 		return null
 
 	var file: FileAccess = FileAccess.open(path, FileAccess.READ)
 	if file == null:
-		push_error("Failed to open level file: %s" % path)
+		_report_error("无法打开关卡文件：%s" % path)
 		return null
 
 	return from_json_text(file.get_as_text(), path)
 
 
 static func from_json_text(json_text: String, source_label: String = "<memory>") -> LevelData:
+	clear_last_error_message()
 	var json: JSON = JSON.new()
 	var parse_error: int = json.parse(json_text)
 	if parse_error != OK:
-		push_error(
-			"Failed to parse level JSON %s: %s at line %d" % [
-				source_label,
-				json.get_error_message(),
-				json.get_error_line(),
-			]
-		)
+		var error_message: String = "JSON 解析失败：第 %d 行附近存在语法错误" % json.get_error_line()
+		_set_last_error_message(error_message)
+		push_error("%s（文件：%s，原始错误：%s）" % [error_message, source_label, json.get_error_message()])
 		return null
 
 	if typeof(json.data) != TYPE_DICTIONARY:
-		push_error("Level root must be a JSON object: %s" % source_label)
+		_report_error("关卡 JSON 顶层必须是对象", source_label)
 		return null
 
 	var raw_data: Dictionary = json.data
@@ -60,17 +67,18 @@ static func from_json_text(json_text: String, source_label: String = "<memory>")
 
 
 static func from_dictionary(raw_data: Dictionary, source_label: String = "<memory>") -> LevelData:
-	if not _ensure_allowed_keys(raw_data, TOP_LEVEL_KEYS, "root", source_label):
+	clear_last_error_message()
+	if not _ensure_allowed_keys(raw_data, TOP_LEVEL_KEYS, "顶层", source_label):
 		return null
 
 	if not _has_non_empty_string(raw_data, "level_id"):
-		return _validation_error(source_label, "level_id must be a non-empty string")
+		return _validation_error(source_label, "level_id 必须是非空字符串")
 
 	if not _has_non_empty_string(raw_data, "display_name"):
-		return _validation_error(source_label, "display_name must be a non-empty string")
+		return _validation_error(source_label, "display_name 必须是非空字符串")
 
 	if not raw_data.has("cells") or typeof(raw_data["cells"]) != TYPE_ARRAY:
-		return _validation_error(source_label, "cells must be an array")
+		return _validation_error(source_label, "cells 必须是数组")
 
 	var level_data: LevelData = LevelData.new()
 	level_data.level_id = String(raw_data["level_id"])
@@ -78,11 +86,11 @@ static func from_dictionary(raw_data: Dictionary, source_label: String = "<memor
 	if raw_data.has("beat_bpm"):
 		var raw_beat_bpm: Variant = raw_data["beat_bpm"]
 		if typeof(raw_beat_bpm) != TYPE_INT and typeof(raw_beat_bpm) != TYPE_FLOAT:
-			return _validation_error(source_label, "beat_bpm must be a number")
+			return _validation_error(source_label, "beat_bpm 必须是数字")
 
 		var normalized_beat_bpm: float = float(raw_beat_bpm)
 		if normalized_beat_bpm <= 0.0:
-			return _validation_error(source_label, "beat_bpm must be greater than 0")
+			return _validation_error(source_label, "beat_bpm 必须大于 0")
 
 		level_data.beat_bpm = normalized_beat_bpm
 
@@ -90,7 +98,7 @@ static func from_dictionary(raw_data: Dictionary, source_label: String = "<memor
 	var raw_cells: Array = Array(raw_data["cells"])
 	for index in range(raw_cells.size()):
 		if typeof(raw_cells[index]) != TYPE_DICTIONARY:
-			return _validation_error(source_label, "cells[%d] must be an object" % index)
+			return _validation_error(source_label, "cells[%d] 必须是对象" % index)
 
 		var normalized_cell: Variant = _parse_cell(raw_cells[index], index, seen_cells, source_label)
 		if normalized_cell == null:
@@ -107,16 +115,16 @@ static func _parse_cell(raw_cell: Dictionary, index: int, seen_cells: Dictionary
 		return null
 
 	if not _has_integer_number(raw_cell, "x"):
-		return _validation_error(source_label, "%s.x must be an integer" % cell_label)
+		return _validation_error(source_label, "%s.x 必须是整数" % cell_label)
 
 	if not _has_integer_number(raw_cell, "y"):
-		return _validation_error(source_label, "%s.y must be an integer" % cell_label)
+		return _validation_error(source_label, "%s.y 必须是整数" % cell_label)
 
 	var x: int = int(raw_cell["x"])
 	var y: int = int(raw_cell["y"])
 	var cell: Vector2i = Vector2i(x, y)
 	if seen_cells.has(cell):
-		return _validation_error(source_label, "duplicate cell coordinates found at (%d, %d)" % [x, y])
+		return _validation_error(source_label, "发现重复的格子坐标 (%d, %d)" % [x, y])
 
 	var has_belt: bool = raw_cell.has("belt")
 	var has_item: bool = raw_cell.has("item")
@@ -137,13 +145,13 @@ static func _parse_cell(raw_cell: Dictionary, index: int, seen_cells: Dictionary
 	if has_packer:
 		machine_count += 1
 	if not has_belt and not has_item and not has_producer and not has_recycler and not has_signal_tower and not has_press_machine and not has_packer:
-		return _validation_error(source_label, "%s must contain at least one gameplay object" % cell_label)
+		return _validation_error(source_label, "%s 至少需要包含一个玩法对象" % cell_label)
 
 	if has_signal_tower and (has_belt or has_item or has_producer or has_recycler or has_press_machine or has_packer):
-		return _validation_error(source_label, "%s.signal_tower must occupy its own cell" % cell_label)
+		return _validation_error(source_label, "%s.signal_tower 必须独占一个格子" % cell_label)
 
 	if machine_count > 1:
-		return _validation_error(source_label, "%s can contain at most one machine" % cell_label)
+		return _validation_error(source_label, "%s 最多只能包含一个机器" % cell_label)
 
 	var normalized_cell: Dictionary = {
 		"x": x,
@@ -152,7 +160,7 @@ static func _parse_cell(raw_cell: Dictionary, index: int, seen_cells: Dictionary
 
 	if has_belt:
 		if typeof(raw_cell["belt"]) != TYPE_DICTIONARY:
-			return _validation_error(source_label, "%s.belt must be an object" % cell_label)
+			return _validation_error(source_label, "%s.belt 必须是对象" % cell_label)
 
 		var normalized_belt: Variant = _parse_belt(raw_cell["belt"], cell_label, source_label)
 		if normalized_belt == null:
@@ -162,7 +170,7 @@ static func _parse_cell(raw_cell: Dictionary, index: int, seen_cells: Dictionary
 
 	if has_item:
 		if typeof(raw_cell["item"]) != TYPE_DICTIONARY:
-			return _validation_error(source_label, "%s.item must be an object" % cell_label)
+			return _validation_error(source_label, "%s.item 必须是对象" % cell_label)
 
 		var normalized_item: Variant = _parse_item(raw_cell["item"], cell_label, source_label)
 		if normalized_item == null:
@@ -172,7 +180,7 @@ static func _parse_cell(raw_cell: Dictionary, index: int, seen_cells: Dictionary
 
 	if has_producer:
 		if typeof(raw_cell["producer"]) != TYPE_DICTIONARY:
-			return _validation_error(source_label, "%s.producer must be an object" % cell_label)
+			return _validation_error(source_label, "%s.producer 必须是对象" % cell_label)
 
 		var normalized_producer: Variant = _parse_producer(raw_cell["producer"], cell_label, source_label)
 		if normalized_producer == null:
@@ -182,7 +190,7 @@ static func _parse_cell(raw_cell: Dictionary, index: int, seen_cells: Dictionary
 
 	if has_recycler:
 		if typeof(raw_cell["recycler"]) != TYPE_DICTIONARY:
-			return _validation_error(source_label, "%s.recycler must be an object" % cell_label)
+			return _validation_error(source_label, "%s.recycler 必须是对象" % cell_label)
 
 		var normalized_recycler: Variant = _parse_recycler(raw_cell["recycler"], cell_label, source_label)
 		if normalized_recycler == null:
@@ -192,7 +200,7 @@ static func _parse_cell(raw_cell: Dictionary, index: int, seen_cells: Dictionary
 
 	if has_signal_tower:
 		if typeof(raw_cell["signal_tower"]) != TYPE_DICTIONARY:
-			return _validation_error(source_label, "%s.signal_tower must be an object" % cell_label)
+			return _validation_error(source_label, "%s.signal_tower 必须是对象" % cell_label)
 
 		var normalized_signal_tower: Variant = _parse_signal_tower(raw_cell["signal_tower"], cell_label, source_label)
 		if normalized_signal_tower == null:
@@ -202,7 +210,7 @@ static func _parse_cell(raw_cell: Dictionary, index: int, seen_cells: Dictionary
 
 	if has_press_machine:
 		if typeof(raw_cell["press_machine"]) != TYPE_DICTIONARY:
-			return _validation_error(source_label, "%s.press_machine must be an object" % cell_label)
+			return _validation_error(source_label, "%s.press_machine 必须是对象" % cell_label)
 
 		var normalized_press_machine: Variant = _parse_press_machine(raw_cell["press_machine"], cell_label, source_label)
 		if normalized_press_machine == null:
@@ -210,11 +218,11 @@ static func _parse_cell(raw_cell: Dictionary, index: int, seen_cells: Dictionary
 
 		normalized_cell["press_machine"] = normalized_press_machine
 		if has_item and String(normalized_cell["item"]["kind"]) != "CARGO":
-			return _validation_error(source_label, "%s.press_machine can only share a cell with item.kind CARGO" % cell_label)
+			return _validation_error(source_label, "%s.press_machine 只能和 item.kind 为 CARGO 的物体共格" % cell_label)
 
 	if has_packer:
 		if typeof(raw_cell["packer"]) != TYPE_DICTIONARY:
-			return _validation_error(source_label, "%s.packer must be an object" % cell_label)
+			return _validation_error(source_label, "%s.packer 必须是对象" % cell_label)
 
 		var normalized_packer: Variant = _parse_packer(raw_cell["packer"], cell_label, source_label)
 		if normalized_packer == null:
@@ -222,7 +230,7 @@ static func _parse_cell(raw_cell: Dictionary, index: int, seen_cells: Dictionary
 
 		normalized_cell["packer"] = normalized_packer
 		if has_item and String(normalized_cell["item"]["kind"]) != "CARGO":
-			return _validation_error(source_label, "%s.packer can only share a cell with item.kind CARGO" % cell_label)
+			return _validation_error(source_label, "%s.packer 只能和 item.kind 为 CARGO 的物体共格" % cell_label)
 
 	seen_cells[cell] = true
 	return normalized_cell
@@ -234,34 +242,34 @@ static func _parse_belt(raw_belt: Dictionary, cell_label: String, source_label: 
 		return null
 
 	if not _has_non_empty_string(raw_belt, "input_direction"):
-		return _validation_error(source_label, "%s.input_direction must be a non-empty string" % belt_label)
+		return _validation_error(source_label, "%s.input_direction 必须是非空字符串" % belt_label)
 
 	if not _has_non_empty_string(raw_belt, "output_direction"):
-		return _validation_error(source_label, "%s.output_direction must be a non-empty string" % belt_label)
+		return _validation_error(source_label, "%s.output_direction 必须是非空字符串" % belt_label)
 
 	if not _has_positive_integer_number(raw_belt, "beat_interval"):
-		return _validation_error(source_label, "%s.beat_interval must be a positive integer" % belt_label)
+		return _validation_error(source_label, "%s.beat_interval 必须是正整数" % belt_label)
 
 	var input_direction: String = String(raw_belt["input_direction"]).strip_edges().to_upper()
 	var output_direction: String = String(raw_belt["output_direction"]).strip_edges().to_upper()
 	var beat_interval: int = int(raw_belt["beat_interval"])
 
 	if not Direction.is_valid_name(input_direction):
-		return _validation_error(source_label, "%s.input_direction must be one of %s" % [belt_label, Direction.NAMES])
+		return _validation_error(source_label, "%s.input_direction 必须是 %s 之一" % [belt_label, Direction.NAMES])
 
 	if not Direction.is_valid_name(output_direction):
-		return _validation_error(source_label, "%s.output_direction must be one of %s" % [belt_label, Direction.NAMES])
+		return _validation_error(source_label, "%s.output_direction 必须是 %s 之一" % [belt_label, Direction.NAMES])
 
 	if beat_interval != 1 and beat_interval != 2:
-		return _validation_error(source_label, "%s.beat_interval must be 1 or 2" % belt_label)
+		return _validation_error(source_label, "%s.beat_interval 只能是 1 或 2" % belt_label)
 
 	var normalized_input_direction: Direction.Value = Direction.from_name(input_direction)
 	var normalized_output_direction: Direction.Value = Direction.from_name(output_direction)
 	if Direction.is_opposite(normalized_input_direction, normalized_output_direction):
-		return _validation_error(source_label, "%s cannot use opposite input/output directions" % belt_label)
+		return _validation_error(source_label, "%s 不能使用相反的输入/输出方向" % belt_label)
 
 	if normalized_input_direction != normalized_output_direction and not Direction.is_perpendicular(normalized_input_direction, normalized_output_direction):
-		return _validation_error(source_label, "%s must use matching or perpendicular input/output directions" % belt_label)
+		return _validation_error(source_label, "%s 的输入/输出方向必须相同或垂直" % belt_label)
 
 	return {
 		"input_direction": input_direction,
@@ -276,18 +284,18 @@ static func _parse_item(raw_item: Dictionary, cell_label: String, source_label: 
 		return null
 
 	if not _has_non_empty_string(raw_item, "kind"):
-		return _validation_error(source_label, "%s.kind must be a non-empty string" % item_label)
+		return _validation_error(source_label, "%s.kind 必须是非空字符串" % item_label)
 
 	if not _has_non_empty_string(raw_item, "type"):
-		return _validation_error(source_label, "%s.type must be a non-empty string" % item_label)
+		return _validation_error(source_label, "%s.type 必须是非空字符串" % item_label)
 
 	var item_kind: String = String(raw_item["kind"]).strip_edges().to_upper()
 	if not ITEM_KIND_VALUES.has(item_kind):
-		return _validation_error(source_label, "%s.kind must be one of %s" % [item_label, ITEM_KIND_VALUES])
+		return _validation_error(source_label, "%s.kind 必须是 %s 之一" % [item_label, ITEM_KIND_VALUES])
 
 	var item_type: String = CargoType.normalize(raw_item["type"])
 	if not CargoType.is_valid(item_type):
-		return _validation_error(source_label, "%s.type must be one of %s" % [item_label, CARGO_TYPE_VALUES])
+		return _validation_error(source_label, "%s.type 必须是 %s 之一" % [item_label, CARGO_TYPE_VALUES])
 
 	return {
 		"kind": item_kind,
@@ -301,13 +309,13 @@ static func _parse_producer(raw_producer: Dictionary, cell_label: String, source
 		return null
 
 	if not _has_non_empty_string(raw_producer, "facing"):
-		return _validation_error(source_label, "%s.facing must be a non-empty string" % producer_label)
+		return _validation_error(source_label, "%s.facing 必须是非空字符串" % producer_label)
 
 	if not _has_positive_integer_number(raw_producer, "beat_interval"):
-		return _validation_error(source_label, "%s.beat_interval must be a positive integer" % producer_label)
+		return _validation_error(source_label, "%s.beat_interval 必须是正整数" % producer_label)
 
 	if not raw_producer.has("production_sequence") or typeof(raw_producer["production_sequence"]) != TYPE_ARRAY:
-		return _validation_error(source_label, "%s.production_sequence must be an array" % producer_label)
+		return _validation_error(source_label, "%s.production_sequence 必须是数组" % producer_label)
 
 	var facing: String = String(raw_producer["facing"]).strip_edges().to_upper()
 	var beat_interval: int = int(raw_producer["beat_interval"])
@@ -315,15 +323,15 @@ static func _parse_producer(raw_producer: Dictionary, cell_label: String, source
 	var raw_sequence: Array = Array(raw_producer["production_sequence"])
 
 	if not Direction.is_valid_name(facing):
-		return _validation_error(source_label, "%s.facing must be one of %s" % [producer_label, Direction.NAMES])
+		return _validation_error(source_label, "%s.facing 必须是 %s 之一" % [producer_label, Direction.NAMES])
 
 	for index in range(raw_sequence.size()):
 		if typeof(raw_sequence[index]) != TYPE_STRING:
-			return _validation_error(source_label, "%s.production_sequence[%d] must be a string" % [producer_label, index])
+			return _validation_error(source_label, "%s.production_sequence[%d] 必须是字符串" % [producer_label, index])
 
 		var cargo_type: String = CargoType.normalize(raw_sequence[index])
 		if not CargoType.is_valid(cargo_type):
-			return _validation_error(source_label, "%s.production_sequence[%d] must be one of %s" % [producer_label, index, CARGO_TYPE_VALUES])
+			return _validation_error(source_label, "%s.production_sequence[%d] 必须是 %s 之一" % [producer_label, index, CARGO_TYPE_VALUES])
 
 		normalized_sequence.append(cargo_type)
 
@@ -340,17 +348,17 @@ static func _parse_recycler(raw_recycler: Dictionary, cell_label: String, source
 		return null
 
 	if not raw_recycler.has("targets") or typeof(raw_recycler["targets"]) != TYPE_ARRAY:
-		return _validation_error(source_label, "%s.targets must be an array" % recycler_label)
+		return _validation_error(source_label, "%s.targets 必须是数组" % recycler_label)
 
 	var raw_targets: Array = Array(raw_recycler["targets"])
 	if raw_targets.is_empty():
-		return _validation_error(source_label, "%s.targets must contain at least one target" % recycler_label)
+		return _validation_error(source_label, "%s.targets 至少需要包含一个目标" % recycler_label)
 
 	var normalized_targets: Array[Dictionary] = []
 	var seen_product_types: Dictionary = {}
 	for index in range(raw_targets.size()):
 		if typeof(raw_targets[index]) != TYPE_DICTIONARY:
-			return _validation_error(source_label, "%s.targets[%d] must be an object" % [recycler_label, index])
+			return _validation_error(source_label, "%s.targets[%d] 必须是对象" % [recycler_label, index])
 
 		var normalized_target: Variant = _parse_recycler_target(raw_targets[index], recycler_label, index, source_label)
 		if normalized_target == null:
@@ -358,7 +366,7 @@ static func _parse_recycler(raw_recycler: Dictionary, cell_label: String, source
 
 		var product_type: String = String(normalized_target["product_type"])
 		if seen_product_types.has(product_type):
-			return _validation_error(source_label, "%s.targets[%d].product_type duplicates %s" % [recycler_label, index, product_type])
+			return _validation_error(source_label, "%s.targets[%d].product_type 与 %s 重复" % [recycler_label, index, product_type])
 
 		seen_product_types[product_type] = true
 		normalized_targets.append(normalized_target)
@@ -374,14 +382,14 @@ static func _parse_recycler_target(raw_target: Dictionary, recycler_label: Strin
 		return null
 
 	if not _has_non_empty_string(raw_target, "product_type"):
-		return _validation_error(source_label, "%s.product_type must be a non-empty string" % target_label)
+		return _validation_error(source_label, "%s.product_type 必须是非空字符串" % target_label)
 
 	if not _has_positive_integer_number(raw_target, "required_count"):
-		return _validation_error(source_label, "%s.required_count must be a positive integer" % target_label)
+		return _validation_error(source_label, "%s.required_count 必须是正整数" % target_label)
 
 	var product_type: String = CargoType.normalize(raw_target["product_type"])
 	if not CargoType.is_valid(product_type):
-		return _validation_error(source_label, "%s.product_type must be one of %s" % [target_label, CARGO_TYPE_VALUES])
+		return _validation_error(source_label, "%s.product_type 必须是 %s 之一" % [target_label, CARGO_TYPE_VALUES])
 
 	return {
 		"product_type": product_type,
@@ -397,7 +405,7 @@ static func _parse_signal_tower(raw_signal_tower: Dictionary, cell_label: String
 	var normalized_signal_tower: Dictionary = {}
 	if raw_signal_tower.has("max_steps"):
 		if not _has_positive_integer_number(raw_signal_tower, "max_steps"):
-			return _validation_error(source_label, "%s.max_steps must be a positive integer" % signal_tower_label)
+			return _validation_error(source_label, "%s.max_steps 必须是正整数" % signal_tower_label)
 
 		normalized_signal_tower["max_steps"] = int(raw_signal_tower["max_steps"])
 
@@ -410,26 +418,26 @@ static func _parse_press_machine(raw_press_machine: Dictionary, cell_label: Stri
 		return null
 
 	if not _has_non_empty_string(raw_press_machine, "facing"):
-		return _validation_error(source_label, "%s.facing must be a non-empty string" % press_machine_label)
+		return _validation_error(source_label, "%s.facing 必须是非空字符串" % press_machine_label)
 
 	if not _has_non_empty_string(raw_press_machine, "cargo_type"):
-		return _validation_error(source_label, "%s.cargo_type must be a non-empty string" % press_machine_label)
+		return _validation_error(source_label, "%s.cargo_type 必须是非空字符串" % press_machine_label)
 
 	if not _has_positive_integer_number(raw_press_machine, "beat_interval"):
-		return _validation_error(source_label, "%s.beat_interval must be a positive integer" % press_machine_label)
+		return _validation_error(source_label, "%s.beat_interval 必须是正整数" % press_machine_label)
 
 	var facing: String = String(raw_press_machine["facing"]).strip_edges().to_upper()
 	var cargo_type: String = CargoType.normalize(raw_press_machine["cargo_type"])
 	var beat_interval: int = int(raw_press_machine["beat_interval"])
 
 	if not Direction.is_valid_name(facing):
-		return _validation_error(source_label, "%s.facing must be one of %s" % [press_machine_label, Direction.NAMES])
+		return _validation_error(source_label, "%s.facing 必须是 %s 之一" % [press_machine_label, Direction.NAMES])
 
 	if not CargoType.is_valid(cargo_type):
-		return _validation_error(source_label, "%s.cargo_type must be one of %s" % [press_machine_label, CARGO_TYPE_VALUES])
+		return _validation_error(source_label, "%s.cargo_type 必须是 %s 之一" % [press_machine_label, CARGO_TYPE_VALUES])
 
 	if beat_interval != 1 and beat_interval != 2:
-		return _validation_error(source_label, "%s.beat_interval must be 1 or 2" % press_machine_label)
+		return _validation_error(source_label, "%s.beat_interval 只能是 1 或 2" % press_machine_label)
 
 	return {
 		"facing": facing,
@@ -444,11 +452,11 @@ static func _parse_packer(raw_packer: Dictionary, cell_label: String, source_lab
 		return null
 
 	if not _has_non_empty_string(raw_packer, "facing"):
-		return _validation_error(source_label, "%s.facing must be a non-empty string" % packer_label)
+		return _validation_error(source_label, "%s.facing 必须是非空字符串" % packer_label)
 
 	var facing: String = String(raw_packer["facing"]).strip_edges().to_upper()
 	if not Direction.is_valid_name(facing):
-		return _validation_error(source_label, "%s.facing must be one of %s" % [packer_label, Direction.NAMES])
+		return _validation_error(source_label, "%s.facing 必须是 %s 之一" % [packer_label, Direction.NAMES])
 
 	return {
 		"facing": facing,
@@ -458,11 +466,11 @@ static func _parse_packer(raw_packer: Dictionary, cell_label: String, source_lab
 static func _ensure_allowed_keys(raw_data: Dictionary, allowed_keys: Array, label: String, source_label: String) -> bool:
 	for key in raw_data.keys():
 		if typeof(key) != TYPE_STRING:
-			push_error("Invalid non-string key in %s of %s" % [label, source_label])
+			_push_validation_error(source_label, "%s 中存在非字符串字段名" % label)
 			return false
 
 		if not allowed_keys.has(key):
-			push_error("Unexpected field '%s' in %s of %s" % [key, label, source_label])
+			_push_validation_error(source_label, "%s 中存在未预期字段 '%s'" % [label, key])
 			return false
 
 	return true
@@ -496,5 +504,24 @@ static func _has_positive_integer_number(raw_data: Dictionary, key: String) -> b
 
 
 static func _validation_error(source_label: String, message: String) -> LevelData:
-	push_error("Invalid level data in %s: %s" % [source_label, message])
+	_push_validation_error(source_label, message)
 	return null
+
+
+static func _push_validation_error(source_label: String, message: String) -> void:
+	var error_message: String = "关卡数据不合法：%s" % message
+	_set_last_error_message(error_message)
+	push_error("%s（文件：%s）" % [error_message, source_label])
+
+
+static func _report_error(message: String, source_label: String = "") -> void:
+	_set_last_error_message(message)
+	if source_label.is_empty():
+		push_error(message)
+		return
+
+	push_error("%s（文件：%s）" % [message, source_label])
+
+
+static func _set_last_error_message(message: String) -> void:
+	_last_error_message = message

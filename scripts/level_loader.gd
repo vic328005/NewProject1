@@ -21,13 +21,17 @@ func load_level_file_into_world(level_path: String, world: World) -> LevelData:
 	return level_data
 
 
+func get_last_error_message() -> String:
+	return LevelData.get_last_error_message()
+
+
 func apply_level_data_to_world(level_data: LevelData, world: World) -> bool:
 	if level_data == null:
-		push_error("Cannot apply a null LevelData instance.")
+		push_error("无法应用空的关卡数据。")
 		return false
 
 	if world == null:
-		push_error("Cannot apply level data without a World instance.")
+		push_error("缺少 World 实例，无法应用关卡数据。")
 		return false
 
 	world.clear_level_content()

@@ -12,5 +12,7 @@
 .DS_Store
 Thumbs.db
 
-docs/
+docs/*
+!docs/manual-level-json.md
+!docs/manual-level-json.schema.json
 AGENTS.md

@@ -24,8 +24,6 @@ func _init(world: World) -> void:
 
 ## 执行一次完整拍点结算。
 func resolve_beat(beat_index: int) -> void:
-	
-
 	var machines: Array[Machine] = _collect_machines()
 	var machine_signal_states: Dictionary = _collect_machine_signal_states(machines)
 	var item_snapshot: Dictionary = _collect_item_snapshot()
@@ -43,6 +41,8 @@ func resolve_beat(beat_index: int) -> void:
 	_commit_moves(transport_results, beat_index)
 	_mark_remaining_items_resolved(item_snapshot, transport_results, input_results, beat_index)
 	_update_signal_waves(beat_index)
+	if _world.are_all_recyclers_completed():
+		GM.finish_game(true)
 
 
 func _update_signal_waves(beat_index: int) -> void:
@@ -254,6 +254,7 @@ func _update_machine_states(machines: Array[Machine], machine_signal_states: Dic
 			packer._pending_output_item_type = output_item_type
 			packer._output_ready_beat = beat_index + 1
 			packer._update_animation()
+			_play_sfx(AudioController.SFX_PACKER_PACK)
 			continue
 
 		if machine is PressMachine:
@@ -272,6 +273,7 @@ func _update_machine_states(machines: Array[Machine], machine_signal_states: Dic
 
 			press_machine._press_start_beat = beat_index
 			press_machine._output_ready_beat = beat_index + 1
+			_play_sfx(AudioController.SFX_PRESS_MACHINE_COMPRESS)
 
 
 func _resolve_parallel_move_results(item_snapshot: Dictionary, transport_results: Dictionary) -> void:
@@ -352,6 +354,9 @@ func _commit_outputs(output_results: Array[Dictionary], beat_index: int) -> void
 				continue
 
 			spawned_item.mark_resolved_on_beat(beat_index)
+			if machine is Producer:
+				_play_sfx(AudioController.SFX_PRODUCER_COUNTDOWN)
+				_play_sfx(AudioController.SFX_PRODUCER_DROP)
 			_apply_output_plan(machine, plan, beat_index)
 			continue
 
@@ -420,6 +425,8 @@ func _commit_inputs(input_results: Dictionary, beat_index: int) -> void:
 				continue
 
 			_apply_input_plan(machine, plan, item, beat_index)
+			if machine is Recycler:
+				_play_sfx(AudioController.SFX_RECYCLER_DESTROY)
 			if is_instance_valid(item):
 				item.mark_resolved_on_beat(beat_index)
 				item.remove_from_world()
@@ -490,3 +497,11 @@ func _apply_input_plan(machine: Machine, plan: Dictionary, item: Item, _beat_ind
 
 		if plan.has("cargo_type"):
 			recycler.log_cargo_destroyed(String(plan["cargo_type"]))
+
+
+func _play_sfx(key: StringName) -> void:
+	var audio: AudioController = GM.audio
+	if not is_instance_valid(audio):
+		return
+
+	audio.play_sfx(key)

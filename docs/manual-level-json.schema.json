@@ -1,0 +1,534 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/newproject1/manual-level-json.schema.json",
+  "title": "NewProject1 Level JSON Schema",
+  "description": "Standard JSON Schema for the current runtime-supported level JSON format.",
+  "$comment": "This schema matches the current parser in scripts/level_data.gd as closely as standard JSON Schema allows. Two runtime checks are intentionally left to code validation because standard JSON Schema cannot express them exactly: 1) cells x/y coordinate pair uniqueness across the array, 2) recycler.targets product_type uniqueness after normalization.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "level_id",
+    "display_name",
+    "cells"
+  ],
+  "properties": {
+    "level_id": {
+      "$ref": "#/$defs/nonEmptyTrimmedString"
+    },
+    "display_name": {
+      "$ref": "#/$defs/nonEmptyTrimmedString"
+    },
+    "beat_bpm": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "cells": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/cell"
+      }
+    }
+  },
+  "$defs": {
+    "nonEmptyTrimmedString": {
+      "type": "string",
+      "pattern": ".*\\S.*"
+    },
+    "integerNumber": {
+      "type": "number",
+      "multipleOf": 1
+    },
+    "positiveIntegerNumber": {
+      "type": "number",
+      "multipleOf": 1,
+      "exclusiveMinimum": 0
+    },
+    "directionString": {
+      "type": "string",
+      "pattern": "^\\s*(?:[Uu][Pp]|[Rr][Ii][Gg][Hh][Tt]|[Dd][Oo][Ww][Nn]|[Ll][Ee][Ff][Tt])\\s*$"
+    },
+    "cargoTypeString": {
+      "type": "string",
+      "pattern": "^\\s*(?:[Aa]|[Bb]|[Cc])\\s*$"
+    },
+    "cargoKindString": {
+      "type": "string",
+      "pattern": "^\\s*[Cc][Aa][Rr][Gg][Oo]\\s*$"
+    },
+    "itemKindString": {
+      "type": "string",
+      "pattern": "^\\s*(?:[Cc][Aa][Rr][Gg][Oo]|[Pp][Rr][Oo][Dd][Uu][Cc][Tt])\\s*$"
+    },
+    "belt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "input_direction",
+        "output_direction",
+        "beat_interval"
+      ],
+      "properties": {
+        "input_direction": {
+          "$ref": "#/$defs/directionString"
+        },
+        "output_direction": {
+          "$ref": "#/$defs/directionString"
+        },
+        "beat_interval": {
+          "enum": [
+            1,
+            2
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "input_direction": {
+                "pattern": "^\\s*[Uu][Pp]\\s*$"
+              }
+            },
+            "required": [
+              "input_direction"
+            ]
+          },
+          "then": {
+            "properties": {
+              "output_direction": {
+                "not": {
+                  "pattern": "^\\s*[Dd][Oo][Ww][Nn]\\s*$"
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "input_direction": {
+                "pattern": "^\\s*[Dd][Oo][Ww][Nn]\\s*$"
+              }
+            },
+            "required": [
+              "input_direction"
+            ]
+          },
+          "then": {
+            "properties": {
+              "output_direction": {
+                "not": {
+                  "pattern": "^\\s*[Uu][Pp]\\s*$"
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "input_direction": {
+                "pattern": "^\\s*[Ll][Ee][Ff][Tt]\\s*$"
+              }
+            },
+            "required": [
+              "input_direction"
+            ]
+          },
+          "then": {
+            "properties": {
+              "output_direction": {
+                "not": {
+                  "pattern": "^\\s*[Rr][Ii][Gg][Hh][Tt]\\s*$"
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "input_direction": {
+                "pattern": "^\\s*[Rr][Ii][Gg][Hh][Tt]\\s*$"
+              }
+            },
+            "required": [
+              "input_direction"
+            ]
+          },
+          "then": {
+            "properties": {
+              "output_direction": {
+                "not": {
+                  "pattern": "^\\s*[Ll][Ee][Ff][Tt]\\s*$"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "type"
+      ],
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/itemKindString"
+        },
+        "type": {
+          "$ref": "#/$defs/cargoTypeString"
+        }
+      }
+    },
+    "producer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "facing",
+        "beat_interval",
+        "production_sequence"
+      ],
+      "properties": {
+        "facing": {
+          "$ref": "#/$defs/directionString"
+        },
+        "beat_interval": {
+          "$ref": "#/$defs/positiveIntegerNumber"
+        },
+        "production_sequence": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/cargoTypeString"
+          }
+        }
+      }
+    },
+    "recyclerTarget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "product_type",
+        "required_count"
+      ],
+      "properties": {
+        "product_type": {
+          "$ref": "#/$defs/cargoTypeString"
+        },
+        "required_count": {
+          "$ref": "#/$defs/positiveIntegerNumber"
+        }
+      }
+    },
+    "recycler": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "targets"
+      ],
+      "properties": {
+        "targets": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/recyclerTarget"
+          }
+        }
+      }
+    },
+    "signalTower": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "max_steps": {
+          "$ref": "#/$defs/positiveIntegerNumber"
+        }
+      }
+    },
+    "pressMachine": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "facing",
+        "cargo_type",
+        "beat_interval"
+      ],
+      "properties": {
+        "facing": {
+          "$ref": "#/$defs/directionString"
+        },
+        "cargo_type": {
+          "$ref": "#/$defs/cargoTypeString"
+        },
+        "beat_interval": {
+          "enum": [
+            1,
+            2
+          ]
+        }
+      }
+    },
+    "packer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "facing"
+      ],
+      "properties": {
+        "facing": {
+          "$ref": "#/$defs/directionString"
+        }
+      }
+    },
+    "cell": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "x",
+        "y"
+      ],
+      "properties": {
+        "x": {
+          "$ref": "#/$defs/integerNumber"
+        },
+        "y": {
+          "$ref": "#/$defs/integerNumber"
+        },
+        "belt": {
+          "$ref": "#/$defs/belt"
+        },
+        "item": {
+          "$ref": "#/$defs/item"
+        },
+        "producer": {
+          "$ref": "#/$defs/producer"
+        },
+        "recycler": {
+          "$ref": "#/$defs/recycler"
+        },
+        "signal_tower": {
+          "$ref": "#/$defs/signalTower"
+        },
+        "press_machine": {
+          "$ref": "#/$defs/pressMachine"
+        },
+        "packer": {
+          "$ref": "#/$defs/packer"
+        }
+      },
+      "allOf": [
+        {
+          "anyOf": [
+            {
+              "required": [
+                "belt"
+              ]
+            },
+            {
+              "required": [
+                "item"
+              ]
+            },
+            {
+              "required": [
+                "producer"
+              ]
+            },
+            {
+              "required": [
+                "recycler"
+              ]
+            },
+            {
+              "required": [
+                "signal_tower"
+              ]
+            },
+            {
+              "required": [
+                "press_machine"
+              ]
+            },
+            {
+              "required": [
+                "packer"
+              ]
+            }
+          ]
+        },
+        {
+          "if": {
+            "required": [
+              "signal_tower"
+            ]
+          },
+          "then": {
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "belt"
+                  ]
+                },
+                {
+                  "required": [
+                    "item"
+                  ]
+                },
+                {
+                  "required": [
+                    "producer"
+                  ]
+                },
+                {
+                  "required": [
+                    "recycler"
+                  ]
+                },
+                {
+                  "required": [
+                    "press_machine"
+                  ]
+                },
+                {
+                  "required": [
+                    "packer"
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        {
+          "not": {
+            "required": [
+              "belt",
+              "producer"
+            ]
+          }
+        },
+        {
+          "not": {
+            "required": [
+              "belt",
+              "recycler"
+            ]
+          }
+        },
+        {
+          "not": {
+            "required": [
+              "belt",
+              "press_machine"
+            ]
+          }
+        },
+        {
+          "not": {
+            "required": [
+              "belt",
+              "packer"
+            ]
+          }
+        },
+        {
+          "not": {
+            "required": [
+              "producer",
+              "recycler"
+            ]
+          }
+        },
+        {
+          "not": {
+            "required": [
+              "producer",
+              "press_machine"
+            ]
+          }
+        },
+        {
+          "not": {
+            "required": [
+              "producer",
+              "packer"
+            ]
+          }
+        },
+        {
+          "not": {
+            "required": [
+              "recycler",
+              "press_machine"
+            ]
+          }
+        },
+        {
+          "not": {
+            "required": [
+              "recycler",
+              "packer"
+            ]
+          }
+        },
+        {
+          "not": {
+            "required": [
+              "press_machine",
+              "packer"
+            ]
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "press_machine",
+              "item"
+            ]
+          },
+          "then": {
+            "properties": {
+              "item": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "$ref": "#/$defs/cargoKindString"
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "packer",
+              "item"
+            ]
+          },
+          "then": {
+            "properties": {
+              "item": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "$ref": "#/$defs/cargoKindString"
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}
