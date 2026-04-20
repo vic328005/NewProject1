@@ -51,6 +51,7 @@ func output(beat_index: int) -> Dictionary:
 		"target_cell": get_target_cell(),
 		"item_type": _pending_output_cargo_type,
 		"item_kind": Item.Kind.CARGO,
+		"flow_direction": facing,
 		"on_success": Callable(self, "_commit_output_success"),
 	}
 

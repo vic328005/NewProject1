@@ -149,6 +149,7 @@ func _resolve_items(item_snapshot: Dictionary, beat_index: int) -> Dictionary:
 		if transport_action == TRANSPORT_ACTION_MOVE:
 			result["action"] = ITEM_RESULT_MOVE
 			result["target_cell"] = transport_result["target_cell"]
+			result["flow_direction"] = transport_result["flow_direction"]
 
 		item_results[item] = result
 
@@ -227,6 +228,7 @@ func _commit_items(item_results: Dictionary, beat_index: int) -> void:
 			successful_moves.append({
 				"item": item,
 				"target_cell": result["target_cell"],
+				"flow_direction": result["flow_direction"],
 			})
 			continue
 
@@ -246,7 +248,8 @@ func _commit_items(item_results: Dictionary, beat_index: int) -> void:
 			continue
 
 		var target_cell: Vector2i = move_result["target_cell"]
-		item.complete_parallel_move(target_cell)
+		var flow_direction: Direction.Value = move_result["flow_direction"]
+		item.complete_parallel_move(target_cell, flow_direction)
 		item.mark_resolved_on_beat(beat_index)
 
 
@@ -266,10 +269,12 @@ func _commit_outputs(output_intents: Array[Dictionary], beat_index: int) -> void
 
 		var action: String = String(output_intent["action"])
 		if action == OUTPUT_ACTION_SPAWN:
+			var spawned_flow_direction: Direction.Value = output_intent["flow_direction"]
 			var spawned_item: Item = _world.spawn_item(
 				target_cell,
 				String(output_intent["item_type"]),
-				output_intent["item_kind"]
+				output_intent["item_kind"],
+				spawned_flow_direction
 			)
 			if spawned_item == null:
 				continue
@@ -283,7 +288,8 @@ func _commit_outputs(output_intents: Array[Dictionary], beat_index: int) -> void
 			if released_item == null or not is_instance_valid(released_item):
 				continue
 
-			if not released_item.deploy_from_machine(target_cell):
+			var released_flow_direction: Direction.Value = output_intent["flow_direction"]
+			if not released_item.deploy_from_machine(target_cell, released_flow_direction):
 				continue
 
 			released_item.mark_resolved_on_beat(beat_index)

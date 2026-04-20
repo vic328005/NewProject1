@@ -31,6 +31,18 @@ static func rotate_right(direction: Value) -> Value:
 	return wrapi(int(direction) + 1, 0, 4) as Value
 
 
+static func opposite(direction: Value) -> Value:
+	return wrapi(int(direction) + 2, 0, 4) as Value
+
+
+static func is_opposite(a: Value, b: Value) -> bool:
+	return opposite(a) == b
+
+
+static func is_perpendicular(a: Value, b: Value) -> bool:
+	return a != b and not is_opposite(a, b)
+
+
 static func from_name(name: String) -> Value:
 	var normalized_name: String = name.strip_edges().to_upper()
 	match normalized_name:

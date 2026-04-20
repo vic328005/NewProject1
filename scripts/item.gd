@@ -66,6 +66,10 @@ var _move_tween: Tween
 # 最近一次参与结算的拍点编号。
 # 目前主要由 WorldSimulation 写入，给后续扩展保留状态。
 var last_resolved_beat: int = -1
+# 当前物体流入所在格子的方向。
+# 只有运输链路相关逻辑会读取它，未初始化时视为无方向状态。
+var _flow_direction: Direction.Value = Direction.Value.RIGHT
+var _has_flow_direction: bool = false
 # 精灵节点引用，用于刷新外观。
 @onready var _sprite: Sprite2D = $Sprite2D
 
@@ -110,6 +114,23 @@ func mark_resolved_on_beat(beat_index: int) -> void:
 	last_resolved_beat = beat_index
 
 
+func has_flow_direction() -> bool:
+	return _has_flow_direction
+
+
+func get_flow_direction() -> Direction.Value:
+	return _flow_direction
+
+
+func set_flow_direction(direction: Direction.Value) -> void:
+	_flow_direction = direction
+	_has_flow_direction = true
+
+
+func clear_flow_direction() -> void:
+	_has_flow_direction = false
+
+
 # 直接把物体放到指定世界和格子。
 # 常用于初始生成、关卡加载或机器出料后的落位。
 # 这个方法会立即更新占格，并把节点对齐到格子中心。
@@ -139,7 +160,7 @@ func store_in_machine(anchor_global_position: Vector2) -> void:
 
 # 把物体从机器内部释放到指定格子。
 # 只有目标格为空时才会成功；成功后会重新登记占格并播放移动动画。
-func deploy_from_machine(target_cell: Vector2i) -> bool:
+func deploy_from_machine(target_cell: Vector2i, flow_direction: Direction.Value) -> bool:
 	if _world == null:
 		return false
 
@@ -150,6 +171,7 @@ func deploy_from_machine(target_cell: Vector2i) -> bool:
 	_registered_cell = target_cell
 	_world.item_layer.set_cell(target_cell, self)
 	_is_registered_to_layer = true
+	set_flow_direction(flow_direction)
 	var target_global_position: Vector2 = _world.to_global(_world.cell_to_world(target_cell))
 	_start_move_to_global_position(target_global_position)
 	return true
@@ -168,13 +190,14 @@ func begin_parallel_move() -> void:
 
 # 并行移动阶段的后半段。
 # 在所有成功移动都确认后，再统一把物体登记到目标格并播放动画。
-func complete_parallel_move(target_cell: Vector2i) -> void:
+func complete_parallel_move(target_cell: Vector2i, flow_direction: Direction.Value) -> void:
 	if _world == null:
 		return
 
 	_registered_cell = target_cell
 	_world.item_layer.set_cell(target_cell, self)
 	_is_registered_to_layer = true
+	set_flow_direction(flow_direction)
 	var target_global_position: Vector2 = _world.to_global(_world.cell_to_world(target_cell))
 	_start_move_to_global_position(target_global_position)
 

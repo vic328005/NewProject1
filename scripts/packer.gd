@@ -50,6 +50,7 @@ func output(beat_index: int) -> Dictionary:
 		"target_cell": get_target_cell(),
 		"item_type": _pending_output_item_type,
 		"item_kind": Item.Kind.PRODUCT,
+		"flow_direction": facing,
 		"on_success": Callable(self, "_commit_output_success"),
 	}
 
@@ -89,6 +90,7 @@ func transport(item: Item, beat_index: int) -> Dictionary:
 	return {
 		"action": "move",
 		"target_cell": get_target_cell(),
+		"flow_direction": facing,
 	}
 
 

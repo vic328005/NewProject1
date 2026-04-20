@@ -70,6 +70,7 @@ func output(beat_index: int) -> Dictionary:
 		"action": "release",
 		"target_cell": get_target_cell(),
 		"item": _pressed_item,
+		"flow_direction": facing,
 		"on_success": Callable(self, "clear_pressed_item"),
 	}
 
@@ -110,6 +111,7 @@ func transport(item: Item, beat_index: int) -> Dictionary:
 	return {
 		"action": "move",
 		"target_cell": get_target_cell(),
+		"flow_direction": facing,
 	}
 
 

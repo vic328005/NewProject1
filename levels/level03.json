@@ -37,8 +37,8 @@
       "x": 6,
       "y": 8,
       "belt": {
-        "facing": "RIGHT",
-        "turn_mode": "STRAIGHT",
+        "input_direction": "RIGHT",
+        "output_direction": "RIGHT",
         "beat_interval": 2
       }
     },
@@ -46,8 +46,8 @@
       "x": 7,
       "y": 8,
       "belt": {
-        "facing": "RIGHT",
-        "turn_mode": "STRAIGHT",
+        "input_direction": "RIGHT",
+        "output_direction": "RIGHT",
         "beat_interval": 2
       }
     },
@@ -55,8 +55,8 @@
       "x": 8,
       "y": 8,
       "belt": {
-        "facing": "RIGHT",
-        "turn_mode": "STRAIGHT",
+        "input_direction": "RIGHT",
+        "output_direction": "RIGHT",
         "beat_interval": 2
       }
     },
@@ -71,8 +71,8 @@
       "x": 10,
       "y": 8,
       "belt": {
-        "facing": "RIGHT",
-        "turn_mode": "STRAIGHT",
+        "input_direction": "RIGHT",
+        "output_direction": "RIGHT",
         "beat_interval": 2
       }
     },
@@ -80,8 +80,8 @@
       "x": 11,
       "y": 8,
       "belt": {
-        "facing": "RIGHT",
-        "turn_mode": "STRAIGHT",
+        "input_direction": "RIGHT",
+        "output_direction": "RIGHT",
         "beat_interval": 2
       }
     },

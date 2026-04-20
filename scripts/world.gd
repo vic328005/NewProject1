@@ -120,13 +120,14 @@ func add_level_content(node: Node) -> void:
 
 
 # 在指定格子生成运输物实例，失败时返回 null。
-func spawn_item(cell: Vector2i, item_type: String, item_kind: Item.Kind) -> Item:
+func spawn_item(cell: Vector2i, item_type: String, item_kind: Item.Kind, flow_direction: Direction.Value) -> Item:
 	if item_layer.has_cell(cell):
 		return null
 
 	var item: Item = ITEM_SCENE.instantiate() as Item
 	item.item_type = item_type
 	item.item_kind = item_kind
+	item.set_flow_direction(flow_direction)
 	item.place_at_cell(self, cell)
 	add_level_content(item)
 	return item

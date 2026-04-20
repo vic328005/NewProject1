@@ -8,7 +8,7 @@ const TOP_LEVEL_KEYS := [
 	"cells",
 ]
 const CELL_KEYS := ["x", "y", "belt", "item", "producer", "recycler", "signal_tower", "press_machine", "packer"]
-const BELT_KEYS := ["facing", "turn_mode", "beat_interval"]
+const BELT_KEYS := ["input_direction", "output_direction", "beat_interval"]
 const ITEM_KEYS := ["kind", "type"]
 const PRODUCER_KEYS := ["facing", "beat_interval", "production_sequence"]
 const RECYCLER_KEYS := ["targets"]
@@ -16,7 +16,6 @@ const RECYCLER_TARGET_KEYS := ["product_type", "required_count"]
 const SIGNAL_TOWER_KEYS: Array = ["max_steps"]
 const PRESS_MACHINE_KEYS := ["facing", "cargo_type", "beat_interval"]
 const PACKER_KEYS := ["facing"]
-const BELT_TURN_MODE_VALUES := ["STRAIGHT", "LEFT", "RIGHT"]
 const CARGO_TYPE_VALUES: Array[String] = CargoType.VALUES
 const ITEM_KIND_VALUES := ["CARGO", "PRODUCT"]
 
@@ -234,31 +233,39 @@ static func _parse_belt(raw_belt: Dictionary, cell_label: String, source_label: 
 	if not _ensure_allowed_keys(raw_belt, BELT_KEYS, belt_label, source_label):
 		return null
 
-	if not _has_non_empty_string(raw_belt, "facing"):
-		return _validation_error(source_label, "%s.facing must be a non-empty string" % belt_label)
+	if not _has_non_empty_string(raw_belt, "input_direction"):
+		return _validation_error(source_label, "%s.input_direction must be a non-empty string" % belt_label)
 
-	if not _has_non_empty_string(raw_belt, "turn_mode"):
-		return _validation_error(source_label, "%s.turn_mode must be a non-empty string" % belt_label)
+	if not _has_non_empty_string(raw_belt, "output_direction"):
+		return _validation_error(source_label, "%s.output_direction must be a non-empty string" % belt_label)
 
 	if not _has_positive_integer_number(raw_belt, "beat_interval"):
 		return _validation_error(source_label, "%s.beat_interval must be a positive integer" % belt_label)
 
-	var facing: String = String(raw_belt["facing"])
-	var turn_mode: String = String(raw_belt["turn_mode"])
+	var input_direction: String = String(raw_belt["input_direction"]).strip_edges().to_upper()
+	var output_direction: String = String(raw_belt["output_direction"]).strip_edges().to_upper()
 	var beat_interval: int = int(raw_belt["beat_interval"])
 
-	if not Direction.is_valid_name(facing):
-		return _validation_error(source_label, "%s.facing must be one of %s" % [belt_label, Direction.NAMES])
+	if not Direction.is_valid_name(input_direction):
+		return _validation_error(source_label, "%s.input_direction must be one of %s" % [belt_label, Direction.NAMES])
 
-	if not BELT_TURN_MODE_VALUES.has(turn_mode):
-		return _validation_error(source_label, "%s.turn_mode must be one of %s" % [belt_label, BELT_TURN_MODE_VALUES])
+	if not Direction.is_valid_name(output_direction):
+		return _validation_error(source_label, "%s.output_direction must be one of %s" % [belt_label, Direction.NAMES])
 
 	if beat_interval != 1 and beat_interval != 2:
 		return _validation_error(source_label, "%s.beat_interval must be 1 or 2" % belt_label)
 
+	var normalized_input_direction: Direction.Value = Direction.from_name(input_direction)
+	var normalized_output_direction: Direction.Value = Direction.from_name(output_direction)
+	if Direction.is_opposite(normalized_input_direction, normalized_output_direction):
+		return _validation_error(source_label, "%s cannot use opposite input/output directions" % belt_label)
+
+	if normalized_input_direction != normalized_output_direction and not Direction.is_perpendicular(normalized_input_direction, normalized_output_direction):
+		return _validation_error(source_label, "%s must use matching or perpendicular input/output directions" % belt_label)
+
 	return {
-		"facing": facing,
-		"turn_mode": turn_mode,
+		"input_direction": input_direction,
+		"output_direction": output_direction,
 		"beat_interval": beat_interval,
 	}
 

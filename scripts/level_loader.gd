@@ -35,9 +35,11 @@ func apply_level_data_to_world(level_data: LevelData, world: World) -> bool:
 
 	for cell_data in level_data.cells:
 		var cell: Vector2i = Vector2i(int(cell_data["x"]), int(cell_data["y"]))
+		var belt_data: Dictionary = {}
+		if cell_data.has("belt"):
+			belt_data = Dictionary(cell_data["belt"])
 
 		if cell_data.has("belt"):
-			var belt_data: Dictionary = Dictionary(cell_data["belt"])
 			var belt: Belt = _create_belt(cell, belt_data, world)
 			world.add_level_content(belt)
 
@@ -68,7 +70,12 @@ func apply_level_data_to_world(level_data: LevelData, world: World) -> bool:
 
 		if cell_data.has("item"):
 			var item_data: Dictionary = Dictionary(cell_data["item"])
-			var item: Item = _create_item(cell, item_data, world)
+			var has_initial_flow_direction: bool = false
+			var initial_flow_direction: Direction.Value = Direction.Value.RIGHT
+			if not belt_data.is_empty():
+				has_initial_flow_direction = true
+				initial_flow_direction = Direction.from_name(String(belt_data["input_direction"]))
+			var item: Item = _create_item(cell, item_data, world, has_initial_flow_direction, initial_flow_direction)
 			world.add_level_content(item)
 
 	return true
@@ -77,16 +84,24 @@ func apply_level_data_to_world(level_data: LevelData, world: World) -> bool:
 func _create_belt(cell: Vector2i, belt_data: Dictionary, world: World) -> Belt:
 	var belt: Belt = BELT_SCENE.instantiate() as Belt
 	belt.position = world.cell_to_world(cell)
-	belt.facing = Direction.from_name(String(belt_data["facing"]))
-	belt.turn_mode = _to_belt_turn_mode(String(belt_data["turn_mode"]))
+	belt.input_direction = Direction.from_name(String(belt_data["input_direction"]))
+	belt.output_direction = Direction.from_name(String(belt_data["output_direction"]))
 	belt.beat_interval = int(belt_data["beat_interval"])
 	return belt
 
 
-func _create_item(cell: Vector2i, item_data: Dictionary, world: World) -> Item:
+func _create_item(
+	cell: Vector2i,
+	item_data: Dictionary,
+	world: World,
+	has_initial_flow_direction: bool = false,
+	initial_flow_direction: Direction.Value = Direction.Value.RIGHT
+) -> Item:
 	var item: Item = ITEM_SCENE.instantiate() as Item
 	item.item_kind = _to_item_kind(String(item_data["kind"]))
 	item.item_type = String(item_data["type"])
+	if has_initial_flow_direction:
+		item.set_flow_direction(initial_flow_direction)
 	item.place_at_cell(world, cell)
 	return item
 
@@ -129,17 +144,6 @@ func _create_packer(cell: Vector2i, packer_data: Dictionary, world: World) -> Pa
 	packer.position = world.cell_to_world(cell)
 	packer.facing = Direction.from_name(String(packer_data["facing"]))
 	return packer
-
-
-func _to_belt_turn_mode(turn_mode_name: String) -> Belt.TurnMode:
-	match turn_mode_name:
-		"LEFT":
-			return Belt.TurnMode.LEFT
-		"RIGHT":
-			return Belt.TurnMode.RIGHT
-		_:
-			return Belt.TurnMode.STRAIGHT
-
 
 func _to_item_kind(kind_name: String) -> Item.Kind:
 	match kind_name:
