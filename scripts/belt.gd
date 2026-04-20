@@ -7,11 +7,6 @@ enum TurnMode {
 	RIGHT,
 }
 
-const STRAIGHT_INTERVAL_1_TEXTURE: Texture2D = preload("res://assets/images/belt_straight_interval_1.png")
-const STRAIGHT_INTERVAL_2_TEXTURE: Texture2D = preload("res://assets/images/belt_straight_interval_2.png")
-const TURN_INTERVAL_1_TEXTURE: Texture2D = preload("res://assets/images/belt_turn_interval_1.png")
-const TURN_INTERVAL_2_TEXTURE: Texture2D = preload("res://assets/images/belt_turn_interval_2.png")
-
 var facing: Direction.Value = Direction.Value.RIGHT:
 	set(value):
 		facing = value
@@ -27,7 +22,7 @@ var beat_interval: int = 2:
 		beat_interval = clampi(value, 1, 2)
 		_update_sprite_visual()
 
-var _sprite: Sprite2D
+var _animated_sprite: AnimatedSprite2D
 
 
 func _ready() -> void:
@@ -84,45 +79,52 @@ func _get_output_direction() -> Direction.Value:
 
 
 func _update_sprite_visual() -> void:
-	if _sprite == null:
-		_sprite = get_node_or_null(^"Sprite2D") as Sprite2D
+	if _animated_sprite == null:
+		_animated_sprite = get_node_or_null(^"Sprite2D/AnimatedSprite2D") as AnimatedSprite2D
 
-	if _sprite == null:
+	if _animated_sprite == null:
 		return
 
-	_sprite.texture = _get_belt_texture()
-	_sprite.rotation_degrees = _get_sprite_rotation_degrees()
-	_sprite.flip_h = turn_mode == TurnMode.LEFT
-	_sprite.flip_v = false
+	var target_animation: StringName = _get_animation_name()
+	if _animated_sprite.animation != target_animation:
+		_animated_sprite.play(target_animation)
+		return
 
-
-func _get_belt_texture() -> Texture2D:
 	if turn_mode == TurnMode.STRAIGHT:
-		if beat_interval == 1:
-			return STRAIGHT_INTERVAL_1_TEXTURE
+		if not _animated_sprite.is_playing():
+			_animated_sprite.play()
+		return
 
-		return STRAIGHT_INTERVAL_2_TEXTURE
-
-	if beat_interval == 1:
-		return TURN_INTERVAL_1_TEXTURE
-
-	return TURN_INTERVAL_2_TEXTURE
+	if not _animated_sprite.is_playing():
+		_animated_sprite.play()
 
 
-func _get_rotation_degrees_for_direction(direction: Direction.Value) -> float:
-	match direction:
+func _get_animation_name() -> StringName:
+	if turn_mode == TurnMode.STRAIGHT:
+		return _get_straight_animation_name()
+
+	return _get_turn_animation_name()
+
+
+func _get_straight_animation_name() -> StringName:
+	match facing:
 		Direction.Value.UP:
-			return -90.0
+			return &"up"
 		Direction.Value.RIGHT:
-			return 0.0
+			return &"right"
 		Direction.Value.DOWN:
-			return 90.0
+			return &"down"
 		_:
-			return 180.0
+			return &"left"
 
 
-func _get_sprite_rotation_degrees() -> float:
-	if turn_mode == TurnMode.STRAIGHT:
-		return wrapf(_get_rotation_degrees_for_direction(facing), 0.0, 360.0)
+func _get_turn_animation_name() -> StringName:
+	var prefix: String = "turn1"
+	if turn_mode == TurnMode.RIGHT:
+		prefix = "turn2"
 
-	return wrapf(float(int(facing)) * 90.0, 0.0, 360.0)
+	var suffix: String = "up"
+	if facing == Direction.Value.DOWN or facing == Direction.Value.LEFT:
+		suffix = "down"
+
+	return StringName("%s-%s" % [prefix, suffix])
