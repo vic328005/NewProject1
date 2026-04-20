@@ -2,7 +2,7 @@
   "level_id": "level07",
   "display_name": "level07",
   "beat_bpm": 80,
-  "failure_beat_limit": 400,
+  "failure_beat_limit": 140,
   "cells": [
     {
       "x": 10,
