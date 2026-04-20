@@ -7,6 +7,7 @@ enum UIOpenPolicy {
 }
 
 const MAIN_MENU_PANEL_SCENE: PackedScene = preload("res://prefabs/ui/main_menu_panel.tscn")
+const LEVEL_SELECT_PANEL_SCENE: PackedScene = preload("res://prefabs/ui/level_select_panel.tscn")
 const METRONOME_PANEL_SCENE: PackedScene = preload("res://prefabs/ui/metronome_panel.tscn")
 const RESULT_PANEL_SCENE: PackedScene = preload("res://prefabs/ui/result_panel.tscn")
 
@@ -14,6 +15,13 @@ static var main_menu_panel: UIInfo = UIInfo.new(
 	&"main_menu_panel",
 	MAIN_MENU_PANEL_SCENE,
 	10,
+	UIOpenPolicy.SINGLE
+)
+
+static var level_select_panel: UIInfo = UIInfo.new(
+	&"level_select_panel",
+	LEVEL_SELECT_PANEL_SCENE,
+	15,
 	UIOpenPolicy.SINGLE
 )
 

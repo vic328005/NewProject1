@@ -10,8 +10,8 @@ class_name Item
 # 4. 根据当前形态与类型刷新贴图表现。
 
 # 运输动画占一个拍子的比例。
-# 留一点尾巴给拍与拍之间的停顿，避免视觉上太满。
-const MOVE_DURATION_RATIO: float = 0.9
+# 适当压缩拍内移动时长，让传送带运输看起来更利落。
+const MOVE_DURATION_RATIO: float = 0.4
 
 # Cargo 形态下三种类型对应的贴图。
 const CARGO_TEXTURE_1: Texture2D = preload("res://assets/images/cargo_1.png")
@@ -256,7 +256,7 @@ func _start_move_to_global_position(target_global_position: Vector2) -> void:
 
 
 # 计算一次移动动画应持续多久。
-# 时长来自节拍器拍长，并乘以 MOVE_DURATION_RATIO 做视觉压缩。
+# 时长来自节拍器拍长，并乘以 MOVE_DURATION_RATIO 做拍内视觉压缩。
 func _get_move_duration_seconds() -> float:
 	if not is_instance_valid(GM.beats):
 		return 0.0

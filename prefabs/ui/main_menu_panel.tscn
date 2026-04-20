@@ -4,6 +4,7 @@
 [ext_resource type="Texture2D" uid="uid://cs12l1x2y6h01" path="res://assets/images/menu_background.png" id="2_qx0qo"]
 [ext_resource type="Texture2D" uid="uid://c8df0dnf61rvj" path="res://assets/images/start_ui.png" id="3_62p4s"]
 [ext_resource type="Texture2D" uid="uid://bry6fmtup5yku" path="res://assets/images/exit_ui.png" id="4_8v2wq"]
+[ext_resource type="Texture2D" uid="uid://yjmycfjvlce0" path="res://assets/images/level_ui.png" id="4_ngx5u"]
 
 [node name="MainMenuPanel" type="Control" unique_id=682217993]
 layout_mode = 3
@@ -63,10 +64,10 @@ layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = -508.8
-offset_top = -768.0
-offset_right = -96.79999
-offset_bottom = -81.0
+offset_left = -604.8
+offset_top = -608.0
+offset_right = -192.79999
+offset_bottom = 79.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_constants/margin_left = 52
@@ -77,7 +78,7 @@ theme_override_constants/margin_bottom = 84
 [node name="Content" type="VBoxContainer" parent="MenuLayer/MarginContainer" unique_id=1726455253]
 layout_mode = 2
 size_flags_vertical = 3
-theme_override_constants/separation = 0
+theme_override_constants/separation = 42
 
 [node name="TitleSpacer" type="Control" parent="MenuLayer/MarginContainer/Content" unique_id=899892081]
 custom_minimum_size = Vector2(0, 84)
@@ -92,28 +93,18 @@ theme_override_colors/font_hover_color = Color(0.988235, 0.866667, 0.988235, 1)
 theme_override_font_sizes/font_size = 44
 icon = ExtResource("3_62p4s")
 flat = true
-icon_alignment = 1
+alignment = 0
 
-[node name="ExternalJsonSpacer" type="Control" parent="MenuLayer/MarginContainer/Content" unique_id=1021758040]
-custom_minimum_size = Vector2(0, 18)
+[node name="LevelButton" type="Button" parent="MenuLayer/MarginContainer/Content" unique_id=264549888]
+custom_minimum_size = Vector2(260, 60)
 layout_mode = 2
-
-[node name="StatusSpacer" type="Control" parent="MenuLayer/MarginContainer/Content" unique_id=192809538]
-custom_minimum_size = Vector2(0, 20)
-layout_mode = 2
-
-[node name="StatusLabel" type="Label" parent="MenuLayer/MarginContainer/Content" unique_id=1778643426]
-visible = false
-custom_minimum_size = Vector2(0, 72)
-layout_mode = 2
-theme_override_colors/font_color = Color(0.996078, 0.741176, 0.776471, 1)
-theme_override_font_sizes/font_size = 18
-text = "加载失败"
-autowrap_mode = 3
-
-[node name="QuitSpacer" type="Control" parent="MenuLayer/MarginContainer/Content" unique_id=499987864]
-custom_minimum_size = Vector2(0, 24)
-layout_mode = 2
+theme_override_colors/font_color = Color(0.858824, 0.760784, 0.909804, 1)
+theme_override_colors/font_focus_color = Color(0.988235, 0.866667, 0.988235, 1)
+theme_override_colors/font_hover_color = Color(0.988235, 0.866667, 0.988235, 1)
+theme_override_font_sizes/font_size = 44
+icon = ExtResource("4_ngx5u")
+flat = true
+alignment = 0
 
 [node name="QuitButton" type="Button" parent="MenuLayer/MarginContainer/Content" unique_id=1459739126]
 custom_minimum_size = Vector2(180, 60)
@@ -124,11 +115,7 @@ theme_override_colors/font_hover_color = Color(0.870588, 0.768627, 0.909804, 1)
 theme_override_font_sizes/font_size = 26
 icon = ExtResource("4_8v2wq")
 flat = true
-icon_alignment = 1
-
-[node name="QuitSpacer2" type="Control" parent="MenuLayer/MarginContainer/Content" unique_id=603383804]
-custom_minimum_size = Vector2(0, 24)
-layout_mode = 2
+alignment = 0
 
 [node name="LoadExternalJsonButton" type="Button" parent="MenuLayer/MarginContainer/Content" unique_id=103320279]
 custom_minimum_size = Vector2(0, 42)
@@ -139,3 +126,13 @@ theme_override_colors/font_hover_color = Color(0.988235, 0.905882, 0.988235, 1)
 theme_override_font_sizes/font_size = 26
 text = "加载外部 JSON"
 flat = true
+alignment = 0
+
+[node name="StatusLabel" type="Label" parent="MenuLayer/MarginContainer/Content" unique_id=1778643426]
+visible = false
+custom_minimum_size = Vector2(0, 72)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.996078, 0.741176, 0.776471, 1)
+theme_override_font_sizes/font_size = 18
+text = "加载失败"
+autowrap_mode = 3

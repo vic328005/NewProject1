@@ -9,6 +9,8 @@ const SFX_PRODUCER_COUNTDOWN: StringName = &"producer_countdown"
 const SFX_PRODUCER_DROP: StringName = &"producer_drop"
 const SFX_RESULT_SUCCESS: StringName = &"result_success"
 const SFX_RESULT_FAIL: StringName = &"result_fail"
+const SFX_MENU_START: StringName = &"menu_start"
+const SFX_MENU_EXIT: StringName = &"menu_exit"
 
 const STREAM_MENU_BGM: AudioStream = preload("res://assets/audios/menu_bgm.wav")
 const STREAM_GAME_BGM: AudioStream = preload("res://assets/audios/4.18.ogg")
@@ -20,6 +22,8 @@ const STREAM_PRODUCER_COUNTDOWN: AudioStream = preload("res://assets/audios/prod
 const STREAM_PRODUCER_DROP: AudioStream = preload("res://assets/audios/producer_drop.wav")
 const STREAM_RESULT_SUCCESS: AudioStream = preload("res://assets/audios/result_success.wav")
 const STREAM_RESULT_FAIL: AudioStream = preload("res://assets/audios/result_fail.wav")
+const STREAM_MENU_START: AudioStream = preload("res://assets/audios/start.wav")
+const STREAM_MENU_EXIT: AudioStream = preload("res://assets/audios/exit.wav")
 
 @export var bgm_player: AudioStreamPlayer
 
@@ -32,6 +36,8 @@ var _sfx_streams: Dictionary = {
 	SFX_PRODUCER_DROP: STREAM_PRODUCER_DROP,
 	SFX_RESULT_SUCCESS: STREAM_RESULT_SUCCESS,
 	SFX_RESULT_FAIL: STREAM_RESULT_FAIL,
+	SFX_MENU_START: STREAM_MENU_START,
+	SFX_MENU_EXIT: STREAM_MENU_EXIT,
 }
 
 
@@ -47,17 +53,18 @@ func play_game_bgm() -> void:
 	_play_bgm(STREAM_GAME_BGM)
 
 
-func play_sfx(key: StringName) -> void:
+func play_sfx(key: StringName) -> AudioStreamPlayer:
 	var stream: AudioStream = _sfx_streams.get(key) as AudioStream
 	if stream == null:
 		push_warning("AudioController.play_sfx received an unknown key: %s" % String(key))
-		return
+		return null
 
 	var player: AudioStreamPlayer = AudioStreamPlayer.new()
 	player.stream = stream
 	add_child(player)
 	player.finished.connect(_on_sfx_player_finished.bind(player), CONNECT_ONE_SHOT)
 	player.play()
+	return player
 
 
 func play_result(success: bool) -> void:

@@ -1,8 +1,26 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://c48tat7tbsh6u"]
 
-[ext_resource type="Script" path="res://scripts/ui/result_panel.gd" id="1_tcnj8"]
+[ext_resource type="Script" uid="uid://d33nhyqd2je68" path="res://scripts/ui/result_panel.gd" id="1_tcnj8"]
 
-[node name="ResultPanel" type="Control"]
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_b5swy"]
+bg_color = Color(0.0470588, 0.0627451, 0.117647, 0.82)
+border_color = Color(0.321569, 0.427451, 0.580392, 0.95)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+corner_radius_top_left = 24
+corner_radius_top_right = 24
+corner_radius_bottom_right = 24
+corner_radius_bottom_left = 24
+content_margin_left = 30.0
+content_margin_top = 22.0
+content_margin_right = 30.0
+content_margin_bottom = 22.0
+shadow_color = Color(0, 0, 0, 0.22)
+shadow_size = 12
+
+[node name="ResultPanel" type="Control" unique_id=661427140]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -11,54 +29,126 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_tcnj8")
 
-[node name="Backdrop" type="ColorRect" parent="."]
+[node name="Backdrop" type="ColorRect" parent="." unique_id=2022643193]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0.0235294, 0.0352941, 0.0627451, 0.776471)
+mouse_filter = 2
+color = Color(0.0156863, 0.0235294, 0.054902, 0.52)
 
-[node name="Center" type="CenterContainer" parent="."]
+[node name="SafeArea" type="MarginContainer" parent="." unique_id=1012252723]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+theme_override_constants/margin_left = 72
+theme_override_constants/margin_top = 48
+theme_override_constants/margin_right = 72
+theme_override_constants/margin_bottom = 48
 
-[node name="PanelContainer" type="PanelContainer" parent="Center"]
-custom_minimum_size = Vector2(460, 280)
+[node name="Content" type="VBoxContainer" parent="SafeArea" unique_id=710918345]
 layout_mode = 2
-
-[node name="MarginContainer" type="MarginContainer" parent="Center/PanelContainer"]
-layout_mode = 2
-theme_override_constants/margin_left = 32
-theme_override_constants/margin_top = 32
-theme_override_constants/margin_right = 32
-theme_override_constants/margin_bottom = 32
-
-[node name="VBoxContainer" type="VBoxContainer" parent="Center/PanelContainer/MarginContainer"]
-layout_mode = 2
-theme_override_constants/separation = 18
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 26
 alignment = 1
 
-[node name="TitleLabel" type="Label" parent="Center/PanelContainer/MarginContainer/VBoxContainer"]
+[node name="BannerArea" type="Control" parent="SafeArea/Content" unique_id=873702902]
+custom_minimum_size = Vector2(0, 340)
 layout_mode = 2
-theme_override_font_sizes/font_size = 38
-text = "游戏成功"
-horizontal_alignment = 1
+size_flags_horizontal = 3
+clip_contents = true
 
-[node name="SummaryLabel" type="Label" parent="Center/PanelContainer/MarginContainer/VBoxContainer"]
-custom_minimum_size = Vector2(0, 72)
+[node name="BannerRect" type="TextureRect" parent="SafeArea/Content/BannerArea" unique_id=409674806]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 6
+
+[node name="SummaryCenter" type="CenterContainer" parent="SafeArea/Content" unique_id=1554203813]
 layout_mode = 2
-theme_override_font_sizes/font_size = 20
-text = "已出货 0 / 3\n当前拍数 0 / 60"
+size_flags_horizontal = 3
+
+[node name="SummaryCard" type="PanelContainer" parent="SafeArea/Content/SummaryCenter" unique_id=247399465]
+custom_minimum_size = Vector2(520, 0)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_b5swy")
+
+[node name="SummaryLabel" type="Label" parent="SafeArea/Content/SummaryCenter/SummaryCard" unique_id=982227052]
+custom_minimum_size = Vector2(0, 76)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.94902, 0.968627, 1, 1)
+theme_override_colors/font_outline_color = Color(0.0470588, 0.0627451, 0.117647, 0.95)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 34
+text = "SHIPPED 0 / 3
+BEATS 0 / 60"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="ReturnButton" type="Button" parent="Center/PanelContainer/MarginContainer/VBoxContainer"]
-custom_minimum_size = Vector2(0, 54)
+[node name="ButtonsPadding" type="MarginContainer" parent="SafeArea/Content" unique_id=1270592676]
 layout_mode = 2
-text = "返回主菜单"
+size_flags_horizontal = 3
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_right = 16
+
+[node name="ButtonsCenter" type="CenterContainer" parent="SafeArea/Content/ButtonsPadding" unique_id=1710178653]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Buttons" type="HBoxContainer" parent="SafeArea/Content/ButtonsPadding/ButtonsCenter" unique_id=319292903]
+layout_mode = 2
+theme_override_constants/separation = 28
+alignment = 1
+
+[node name="RetryButton" type="TextureButton" parent="SafeArea/Content/ButtonsPadding/ButtonsCenter/Buttons" unique_id=1213163997]
+custom_minimum_size = Vector2(336, 141)
+layout_mode = 2
+ignore_texture_size = true
+stretch_mode = 5
+
+[node name="Label" type="Label" parent="SafeArea/Content/ButtonsPadding/ButtonsCenter/Buttons/RetryButton" unique_id=1639756312]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(0.32549, 0.180392, 0.0470588, 1)
+theme_override_colors/font_outline_color = Color(0.933333, 0.878431, 0.682353, 1)
+theme_override_constants/outline_size = 6
+theme_override_font_sizes/font_size = 24
+text = "RETRY LEVEL"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="ReturnButton" type="TextureButton" parent="SafeArea/Content/ButtonsPadding/ButtonsCenter/Buttons" unique_id=2100920516]
+custom_minimum_size = Vector2(336, 141)
+layout_mode = 2
+ignore_texture_size = true
+stretch_mode = 5
+
+[node name="Label" type="Label" parent="SafeArea/Content/ButtonsPadding/ButtonsCenter/Buttons/ReturnButton" unique_id=769934448]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(0.32549, 0.180392, 0.0470588, 1)
+theme_override_colors/font_outline_color = Color(0.933333, 0.878431, 0.682353, 1)
+theme_override_constants/outline_size = 6
+theme_override_font_sizes/font_size = 24
+text = "MAIN MENU"
+horizontal_alignment = 1
+vertical_alignment = 1

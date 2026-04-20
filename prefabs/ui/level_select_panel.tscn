@@ -1,0 +1,91 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/level_select_panel.gd" id="1_5fs7g"]
+
+[node name="LevelSelectPanel" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+script = ExtResource("1_5fs7g")
+
+[node name="Overlay" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+color = Color(0.0156863, 0.00784314, 0.0313726, 0.780392)
+
+[node name="CenterContainer" type="CenterContainer" parent="Overlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Card" type="ColorRect" parent="Overlay/CenterContainer"]
+custom_minimum_size = Vector2(620, 540)
+layout_mode = 2
+color = Color(0.0823529, 0.0392157, 0.133333, 0.95)
+
+[node name="MarginContainer" type="MarginContainer" parent="Overlay/CenterContainer/Card"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 36
+theme_override_constants/margin_top = 32
+theme_override_constants/margin_right = 36
+theme_override_constants/margin_bottom = 28
+
+[node name="Content" type="VBoxContainer" parent="Overlay/CenterContainer/Card/MarginContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 18
+
+[node name="TitleLabel" type="Label" parent="Overlay/CenterContainer/Card/MarginContainer/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.988235, 0.905882, 0.988235, 1)
+theme_override_font_sizes/font_size = 34
+text = "Select Level"
+horizontal_alignment = 1
+
+[node name="ScrollContainer" type="ScrollContainer" parent="Overlay/CenterContainer/Card/MarginContainer/Content"]
+custom_minimum_size = Vector2(0, 320)
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="LevelList" type="VBoxContainer" parent="Overlay/CenterContainer/Card/MarginContainer/Content/ScrollContainer"]
+custom_minimum_size = Vector2(520, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+
+[node name="StatusLabel" type="Label" parent="Overlay/CenterContainer/Card/MarginContainer/Content"]
+visible = false
+custom_minimum_size = Vector2(0, 52)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.996078, 0.741176, 0.776471, 1)
+theme_override_font_sizes/font_size = 18
+text = "Failed to load level."
+autowrap_mode = 3
+
+[node name="ReturnButton" type="Button" parent="Overlay/CenterContainer/Card/MarginContainer/Content"]
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.870588, 0.8, 0.937255, 0.96)
+theme_override_colors/font_focus_color = Color(0.988235, 0.905882, 0.988235, 1)
+theme_override_colors/font_hover_color = Color(0.988235, 0.905882, 0.988235, 1)
+theme_override_font_sizes/font_size = 24
+text = "Back"
+flat = true

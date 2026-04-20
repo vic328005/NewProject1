@@ -1,0 +1,23 @@
+{
+  "level_id": "level02",
+  "display_name": "Level 02",
+  "failure_beat_limit": 60,
+  "cells": [
+    {
+      "x": 0,
+      "y": 0,
+      "recycler": {
+        "targets": [
+          {
+            "product_type": "B",
+            "required_count": 1
+          }
+        ]
+      },
+      "item": {
+        "kind": "PRODUCT",
+        "type": "B"
+      }
+    }
+  ]
+}

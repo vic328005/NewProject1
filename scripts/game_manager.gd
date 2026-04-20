@@ -22,6 +22,7 @@ var level_loader: LevelLoader
 var state: int = GameState.MENU
 var current_beat: int = 0
 var current_level_failure_beat_limit: int = DEFAULT_FAILURE_BEAT_LIMIT
+var current_level_path: String = ""
 
 
 func _init() -> void:
@@ -49,8 +50,28 @@ func start_game() -> void:
 	_start_game_with_level_path(config.start_level_path)
 
 
-func start_game_from_external_level(level_path: String) -> Dictionary:
+func start_game_from_level_path(level_path: String) -> Dictionary:
 	return _start_game_with_level_path(level_path)
+
+
+func start_game_from_external_level(level_path: String) -> Dictionary:
+	return start_game_from_level_path(level_path)
+
+
+func restart_current_level() -> void:
+	assert(config != null, "Config must be initialized before restarting the game.")
+	assert(not current_level_path.is_empty(), "Current level path must exist before restarting the game.")
+	_start_game_with_level_path(current_level_path)
+
+
+func has_next_level() -> bool:
+	return not _get_next_level_path().is_empty()
+
+
+func start_next_level() -> void:
+	var next_level_path: String = _get_next_level_path()
+	assert(not next_level_path.is_empty(), "Next level path must exist before starting the next level.")
+	_start_game_with_level_path(next_level_path)
 
 
 func _start_game_with_level_path(level_path: String) -> Dictionary:
@@ -81,6 +102,7 @@ func _start_game_with_level_path(level_path: String) -> Dictionary:
 	_close_flow_panels()
 	current_beat = 0
 	current_level_failure_beat_limit = level_data.failure_beat_limit
+	current_level_path = level_path
 	state = GameState.PLAYING
 
 	# 以关卡节奏参数重置节拍器，并打开运行中需要的 UI。
@@ -207,6 +229,7 @@ func _show_main_menu() -> void:
 
 	# 返回主菜单时统一停掉节拍、关闭结果与运行时界面，并清空关卡内容。
 	beats.stop()
+	_close_level_select_panel()
 	_close_result_panel()
 	_close_runtime_ui()
 	_clear_session()
@@ -226,6 +249,7 @@ func _clear_session() -> void:
 
 func _close_flow_panels() -> void:
 	_close_menu_panel()
+	_close_level_select_panel()
 	_close_result_panel()
 
 
@@ -234,6 +258,13 @@ func _close_menu_panel() -> void:
 		return
 
 	ui.close_info(UIDef.main_menu_panel)
+
+
+func _close_level_select_panel() -> void:
+	if not is_instance_valid(ui):
+		return
+
+	ui.close_info(UIDef.level_select_panel)
 
 
 func _close_result_panel() -> void:
@@ -280,3 +311,22 @@ func _failure_start_result(message: String) -> Dictionary:
 		"success": false,
 		"message": message,
 	}
+
+
+func _get_next_level_path() -> String:
+	if config == null:
+		return ""
+
+	if current_level_path.is_empty():
+		return ""
+
+	var selectable_level_paths: Array[String] = config.selectable_level_paths
+	var current_index: int = selectable_level_paths.find(current_level_path)
+	if current_index == -1:
+		return ""
+
+	var next_index: int = current_index + 1
+	if next_index >= selectable_level_paths.size():
+		return ""
+
+	return selectable_level_paths[next_index]
