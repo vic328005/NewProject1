@@ -82,6 +82,8 @@ func _start_game_with_level_path(level_path: String) -> Dictionary:
 	state = GameState.PLAYING
 
 	# 以关卡节奏参数重置节拍器，并打开运行中需要的 UI。
+	if is_instance_valid(audio):
+		audio.play_game_bgm()
 	beats.reset(level_data.beat_bpm)
 	ui.open(UIDef.metronome_panel)
 	beats.start()
@@ -207,6 +209,8 @@ func _show_main_menu() -> void:
 	_close_runtime_ui()
 	_clear_session()
 	state = GameState.MENU
+	if is_instance_valid(audio):
+		audio.play_menu_bgm()
 	ui.open(UIDef.main_menu_panel)
 
 

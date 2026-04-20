@@ -9,4 +9,3 @@ bgm_player = NodePath("BgmPlayer")
 
 [node name="BgmPlayer" type="AudioStreamPlayer" parent="." unique_id=135157838]
 stream = ExtResource("2_axpth")
-autoplay = true

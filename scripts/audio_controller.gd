@@ -10,6 +10,8 @@ const SFX_PRODUCER_DROP: StringName = &"producer_drop"
 const SFX_RESULT_SUCCESS: StringName = &"result_success"
 const SFX_RESULT_FAIL: StringName = &"result_fail"
 
+const STREAM_MENU_BGM: AudioStream = preload("res://assets/audios/menu_bgm.wav")
+const STREAM_GAME_BGM: AudioStream = preload("res://assets/audios/4.18.ogg")
 const STREAM_SIGNAL_TOWER_FIRE: AudioStream = preload("res://assets/audios/signal_tower_fire.wav")
 const STREAM_RECYCLER_DESTROY: AudioStream = preload("res://assets/audios/recycler_destroy.wav")
 const STREAM_PRESS_MACHINE_COMPRESS: AudioStream = preload("res://assets/audios/press_machine_compress.wav")
@@ -37,6 +39,14 @@ func _ready() -> void:
 	assert(bgm_player != null, "AudioController requires a BgmPlayer.")
 
 
+func play_menu_bgm() -> void:
+	_play_bgm(STREAM_MENU_BGM)
+
+
+func play_game_bgm() -> void:
+	_play_bgm(STREAM_GAME_BGM)
+
+
 func play_sfx(key: StringName) -> void:
 	var stream: AudioStream = _sfx_streams.get(key) as AudioStream
 	if stream == null:
@@ -56,6 +66,18 @@ func play_result(success: bool) -> void:
 		return
 
 	play_sfx(SFX_RESULT_FAIL)
+
+
+func _play_bgm(stream: AudioStream) -> void:
+	assert(bgm_player != null, "AudioController requires a BgmPlayer.")
+	assert(stream != null, "AudioController requires a valid BGM stream.")
+
+	# 已在播放目标 BGM 时保持当前状态，避免重复切回时从头播放。
+	if bgm_player.stream == stream and bgm_player.playing:
+		return
+
+	bgm_player.stream = stream
+	bgm_player.play()
 
 
 func _on_sfx_player_finished(player: AudioStreamPlayer) -> void:
