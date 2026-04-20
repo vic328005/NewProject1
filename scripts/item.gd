@@ -289,9 +289,17 @@ func _update_visual_state() -> void:
 	_sprite.texture = _get_texture_for_state(_item_kind, _item_type)
 
 
+static func get_product_texture(type_name: String) -> Texture2D:
+	return _get_texture_for_state_static(Kind.PRODUCT, CargoType.normalize(type_name))
+
+
 # 为给定的形态和类型选择最终贴图。
 # 先选 cargo / product 对应的贴图组，再按 A/B/C 返回具体纹理。
 func _get_texture_for_state(kind: Kind, type_name: String) -> Texture2D:
+	return _get_texture_for_state_static(kind, type_name)
+
+
+static func _get_texture_for_state_static(kind: int, type_name: String) -> Texture2D:
 	var texture_1: Texture2D = CARGO_TEXTURE_1
 	var texture_2: Texture2D = CARGO_TEXTURE_2
 	var texture_3: Texture2D = CARGO_TEXTURE_3

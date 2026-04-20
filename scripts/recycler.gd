@@ -3,9 +3,7 @@ class_name Recycler
 
 signal goal_completed(state: Dictionary)
 
-const OUTLINE_COLOR: Color = Color(0.15, 0.09, 0.07, 1.0)
-const COUNT_BG_COLOR: Color = Color(0.09, 0.11, 0.16, 0.92)
-const COUNT_TEXT_COLOR: Color = Color(0.97, 0.95, 0.88, 1.0)
+const IDLE_ANIMATION: StringName = &"idle"
 const COMPLETE_RING_COLOR: Color = Color(1.0, 0.93, 0.61, 1.0)
 
 @export var targets: Array[Dictionary] = []:
@@ -16,14 +14,12 @@ const COMPLETE_RING_COLOR: Color = Color(1.0, 0.93, 0.61, 1.0)
 
 var _target_states: Array[Dictionary] = []
 var _has_emitted_goal_completed: bool = false
-var _font: Font
 @onready var _animated_sprite: AnimatedSprite2D = $AnimatedSprite2D
 
 
 func _ready() -> void:
 	super._ready()
-	if _animated_sprite != null and not _animated_sprite.is_playing():
-		_animated_sprite.play()
+	_play_idle_animation()
 	_rebuild_target_states()
 	_update_visual_state()
 
@@ -154,42 +150,23 @@ func _update_visual_state() -> void:
 
 
 func _draw() -> void:
-	_draw_count_badge()
 	if is_completed():
 		_draw_complete_ring()
-
-
-func _draw_count_badge() -> void:
-	var display_text: String = _get_badge_text()
-	var font: Font = _get_draw_font()
-	if font == null:
-		return
-
-	var font_size: int = 16
-	var text_size: Vector2 = font.get_string_size(display_text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
-	var badge_size: Vector2 = Vector2(maxf(text_size.x + 18.0, 36.0), 28.0)
-	var badge_position: Vector2 = Vector2(32.0 - badge_size.x * 0.5, -46.0)
-	var badge_rect: Rect2 = Rect2(badge_position, badge_size)
-	draw_rect(badge_rect, COUNT_BG_COLOR, true)
-	draw_rect(badge_rect, OUTLINE_COLOR, false, 2.0)
-
-	var text_position: Vector2 = Vector2(
-		badge_rect.position.x + (badge_rect.size.x - text_size.x) * 0.5,
-		badge_rect.position.y + badge_rect.size.y * 0.5 + text_size.y * 0.35
-	)
-	draw_string(font, text_position, display_text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, COUNT_TEXT_COLOR)
 
 
 func _draw_complete_ring() -> void:
 	draw_arc(Vector2(32.0, 32.0), 24.0, 0.0, TAU, 24, COMPLETE_RING_COLOR, 3.0)
 
 
-func _get_draw_font() -> Font:
-	if _font != null:
-		return _font
+func _play_idle_animation() -> void:
+	assert(_animated_sprite != null, "Recycler must have an AnimatedSprite2D child.")
+	assert(_animated_sprite.sprite_frames != null, "Recycler AnimatedSprite2D must have SpriteFrames assigned.")
 
-	_font = ThemeDB.fallback_font
-	return _font
+	var animation_names: PackedStringArray = _animated_sprite.sprite_frames.get_animation_names()
+	assert(animation_names.size() == 1 and animation_names[0] == String(IDLE_ANIMATION), "Recycler must only define the idle animation.")
+
+	_animated_sprite.animation = IDLE_ANIMATION
+	_animated_sprite.play(IDLE_ANIMATION)
 
 
 func _normalize_targets(raw_targets: Array) -> Array[Dictionary]:
@@ -236,28 +213,6 @@ func _get_effective_target_states() -> Array[Dictionary]:
 		return _target_states
 
 	return _create_target_states_from_targets(targets)
-
-
-func _get_badge_text() -> String:
-	if is_completed():
-		return "OK"
-
-	var effective_target_states: Array[Dictionary] = _get_effective_target_states()
-	if effective_target_states.is_empty():
-		return "--"
-
-	var remaining_segments: Array[String] = []
-	for target_status in effective_target_states:
-		var remaining_count: int = int(target_status["remaining_count"])
-		if remaining_count <= 0:
-			continue
-
-		remaining_segments.append("%s:%d" % [String(target_status["product_type"]), remaining_count])
-
-	if remaining_segments.is_empty():
-		return "--"
-
-	return " ".join(remaining_segments)
 
 
 func _log_status(event_name: String, item_type: String) -> void:

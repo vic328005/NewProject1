@@ -1,0 +1,210 @@
+{
+  "level_id": "level01",
+  "display_name": "level01",
+  "beat_bpm": 80,
+  "failure_beat_limit": 400,
+  "cells": [
+    {
+      "x": 6,
+      "y": 5,
+      "producer": {
+        "facing": "RIGHT",
+        "beat_interval": 12,
+        "production_sequence": [
+          "A",
+
+          "A",
+
+          "A",
+
+          "A",
+
+          "A",
+
+          "A"
+
+        ]
+      }
+    },
+    {
+      "x": 7,
+      "y": 5,
+      "belt": {
+        "input_direction": "RIGHT",
+        "output_direction": "RIGHT",
+        "beat_interval": 1
+      }
+    },
+    {
+      "x": 8,
+      "y": 5,
+      "belt": {
+        "input_direction": "RIGHT",
+        "output_direction": "RIGHT",
+        "beat_interval": 1
+      }
+    },
+    {
+      "x": 9,
+      "y": 5,
+      "belt": {
+        "input_direction": "RIGHT",
+        "output_direction": "RIGHT",
+        "beat_interval": 1
+      }
+    },
+    {
+      "x": 10,
+      "y": 5,
+      "belt": {
+        "input_direction": "RIGHT",
+        "output_direction": "DOWN",
+        "beat_interval": 1
+      }
+    },
+    {
+      "x": 10,
+      "y": 6,
+      "belt": {
+        "input_direction": "DOWN",
+        "output_direction": "DOWN",
+        "beat_interval": 1
+      }
+    },
+    {
+      "x": 10,
+      "y": 7,
+      "belt": {
+        "input_direction": "DOWN",
+        "output_direction": "DOWN",
+        "beat_interval": 1
+      }
+    },
+    {
+      "x": 10,
+      "y": 8,
+      "belt": {
+        "input_direction": "DOWN",
+        "output_direction": "DOWN",
+        "beat_interval": 1
+      }
+    },
+    {
+      "x": 10,
+      "y": 9,
+      "belt": {
+        "input_direction": "DOWN",
+        "output_direction": "RIGHT",
+        "beat_interval": 1
+      }
+    },
+    {
+      "x": 11,
+      "y": 9,
+      "belt": {
+        "input_direction": "RIGHT",
+        "output_direction": "RIGHT",
+        "beat_interval": 1
+      }
+    },
+    {
+      "x": 12,
+      "y": 9,
+      "belt": {
+        "input_direction": "RIGHT",
+        "output_direction": "RIGHT",
+        "beat_interval": 1
+      }
+    },
+    {
+      "x": 13,
+      "y": 9,
+      "belt": {
+        "input_direction": "RIGHT",
+        "output_direction": "RIGHT",
+        "beat_interval": 1
+      }
+    },
+    {
+      "x": 15,
+      "y": 9,
+      "belt": {
+        "input_direction": "RIGHT",
+        "output_direction": "RIGHT",
+        "beat_interval": 1
+      }
+    },
+    {
+      "x": 14,
+      "y": 9,
+      "packer": {
+        "facing": "RIGHT"
+
+      }
+    },
+    {
+      "x": 16,
+      "y": 9,
+      "belt": {
+        "input_direction": "RIGHT",
+        "output_direction": "RIGHT",
+        "beat_interval": 1
+      }
+    },
+    {
+      "x": 17,
+      "y": 9,
+      "belt": {
+        "input_direction": "RIGHT",
+        "output_direction": "RIGHT",
+        "beat_interval": 1
+      }
+    },
+    {
+      "x": 18,
+      "y": 9,
+      "belt": {
+        "input_direction": "RIGHT",
+        "output_direction": "RIGHT",
+        "beat_interval": 1
+      }
+    },
+    {
+      "x": 19,
+      "y": 9,
+      "belt": {
+        "input_direction": "RIGHT",
+        "output_direction": "RIGHT",
+        "beat_interval": 1
+      }
+    },
+    {
+      "x": 20,
+      "y": 9,
+      "belt": {
+        "input_direction": "RIGHT",
+        "output_direction": "RIGHT",
+        "beat_interval": 1
+      }
+    },
+    {
+      "x": 21,
+      "y": 9,
+      "recycler": {
+        "targets": [
+          {
+            "product_type": "A",
+            "required_count": 3
+          }
+        ]
+      }
+    },
+    {
+      "x": 14,
+      "y": 14,
+      "signal_tower": {
+        "max_steps": 14
+      }
+    }
+  ]
+}

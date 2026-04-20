@@ -1,0 +1,43 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/level_progress_panel.gd" id="1_jtn34"]
+
+[node name="LevelProgressPanel" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("1_jtn34")
+
+[node name="TopRightAnchor" type="Control" parent="."]
+layout_mode = 0
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -520.0
+offset_top = 26.0
+offset_right = -28.0
+offset_bottom = 160.0
+grow_horizontal = 0
+mouse_filter = 2
+
+[node name="ProgressCard" type="PanelContainer" parent="TopRightAnchor"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="Content" type="MarginContainer" parent="TopRightAnchor/ProgressCard"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="ItemList" type="HBoxContainer" parent="TopRightAnchor/ProgressCard/Content"]
+layout_mode = 2
+theme_override_constants/separation = 12
+alignment = 1
+mouse_filter = 2

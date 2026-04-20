@@ -100,6 +100,40 @@ func get_remaining_recycler_required_count() -> int:
 	return remaining_required_count
 
 
+func get_level_goal_progress_snapshot() -> Array[Dictionary]:
+	var aggregated_targets: Dictionary = {}
+	for recycler in _get_recyclers():
+		var target_statuses: Array[Dictionary] = recycler.get_target_statuses()
+		for target_status in target_statuses:
+			var product_type: String = CargoType.normalize(target_status.get("product_type", CargoType.DEFAULT))
+			if not aggregated_targets.has(product_type):
+				aggregated_targets[product_type] = {
+					"product_type": product_type,
+					"required_count": 0,
+					"completed_count": 0,
+					"remaining_count": 0,
+					"is_completed": false,
+				}
+
+			var aggregated_status: Dictionary = aggregated_targets[product_type]
+			aggregated_status["required_count"] = int(aggregated_status["required_count"]) + int(target_status.get("required_count", 0))
+			aggregated_status["completed_count"] = int(aggregated_status["completed_count"]) + int(target_status.get("completed_count", 0))
+			aggregated_status["remaining_count"] = int(aggregated_status["remaining_count"]) + int(target_status.get("remaining_count", 0))
+			aggregated_targets[product_type] = aggregated_status
+
+	var ordered_snapshot: Array[Dictionary] = []
+	for product_type in CargoType.VALUES:
+		if not aggregated_targets.has(product_type):
+			continue
+
+		var aggregated_status: Dictionary = aggregated_targets[product_type]
+		aggregated_status = aggregated_status.duplicate(true)
+		aggregated_status["is_completed"] = int(aggregated_status["required_count"]) > 0 and int(aggregated_status["remaining_count"]) <= 0
+		ordered_snapshot.append(aggregated_status)
+
+	return ordered_snapshot
+
+
 # 判断所有回收机是否都已完成回收目标。
 func are_all_recyclers_completed() -> bool:
 	var recyclers: Array[Recycler] = _get_recyclers()

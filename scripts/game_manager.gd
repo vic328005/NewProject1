@@ -110,6 +110,7 @@ func _start_game_with_level_path(level_path: String) -> Dictionary:
 		audio.play_game_bgm()
 	beats.reset(level_data.beat_bpm)
 	ui.open(UIDef.metronome_panel)
+	ui.open(UIDef.level_progress_panel)
 	beats.start()
 	return _success_start_result()
 
@@ -279,6 +280,7 @@ func _close_runtime_ui() -> void:
 		return
 
 	ui.close_info(UIDef.metronome_panel)
+	ui.close_info(UIDef.level_progress_panel)
 
 
 func _on_beat_fired(beat_index: int, _beat_time: float) -> void:
