@@ -1,14 +1,12 @@
 extends Node2D
 class_name SignalWave
 
-# 波面填充色，用于在格子上绘制半透明覆盖。
-const WAVE_FILL_COLOR: Color = Color(0.30, 0.69, 0.35, 0.38)
-# 波面边框色，用于强调当前信号覆盖范围。
-const WAVE_BORDER_COLOR: Color = Color(0.18, 0.41, 0.20, 0.9)
 # 默认最大传播拍数。
 const DEFAULT_MAX_STEPS: int = 10
 # 信号波统一注册到场景树分组，便于结算阶段快速收集。
 const GROUP_NAME: StringName = &"signal_waves"
+const LINE_TEXTURE: Texture2D = preload("res://assets/images/signal_wave_line.png")
+const CONER_TEXTURE: Texture2D = preload("res://assets/images/signal_wave_coner.png")
 
 # 最大传播半径，运行时始终保证至少为 1。
 var max_steps: int = DEFAULT_MAX_STEPS:
@@ -122,16 +120,15 @@ func _draw() -> void:
 	if _world == null or _wave_cells.is_empty():
 		return
 
-	# 以世界格子尺寸为基准，把当前波面逐格画成矩形覆盖。
 	var cell_size: float = float(_world.main_layer.cell_size)
-	var cell_extent: Vector2 = Vector2.ONE * cell_size
 
 	for cell in _wave_cells:
+		if cell == _origin_cell:
+			continue
+
 		# 节点原点已经放在发射格，绘制时只需要计算相对偏移。
 		var cell_origin: Vector2 = _cell_to_local_origin(cell, cell_size)
-		var cell_rect: Rect2 = Rect2(cell_origin, cell_extent)
-		draw_rect(cell_rect, WAVE_FILL_COLOR, true)
-		draw_rect(cell_rect, WAVE_BORDER_COLOR, false, 2.0)
+		_draw_wave_cell(cell, cell_origin)
 
 
 func _build_wave_cells(radius: int) -> Array[Vector2i]:
@@ -232,3 +229,76 @@ func _cell_to_local_origin(cell: Vector2i, cell_size: float) -> Vector2:
 	# 把世界格子坐标转换为相对发射原点的本地绘制原点。
 	var offset: Vector2i = cell - _origin_cell
 	return Vector2(float(offset.x) * cell_size, float(offset.y) * cell_size)
+
+
+func _draw_wave_cell(cell: Vector2i, cell_origin: Vector2) -> void:
+	var directions: Array[Vector2i] = _get_neighbor_directions(cell)
+	if directions.size() < 2:
+		return
+
+	if _is_corner_directions(directions):
+		_draw_corner_texture(cell_origin, directions)
+		return
+
+	_draw_rotated_texture(
+		LINE_TEXTURE,
+		cell_origin,
+		_get_line_rotation(directions)
+	)
+
+
+func _get_neighbor_directions(cell: Vector2i) -> Array[Vector2i]:
+	var directions: Array[Vector2i] = []
+	var candidate_directions: Array[Vector2i] = [
+		Vector2i.LEFT,
+		Vector2i.RIGHT,
+		Vector2i.UP,
+		Vector2i.DOWN,
+	]
+
+	for direction in candidate_directions:
+		var neighbor_cell: Vector2i = cell + direction
+		if neighbor_cell == _origin_cell:
+			# 中心格只参与逻辑覆盖，不参与贴图拓扑判断，避免首拍侧边误判成横线。
+			continue
+
+		if _wave_cells.has(neighbor_cell):
+			directions.append(direction)
+
+	return directions
+
+
+func _is_corner_directions(directions: Array[Vector2i]) -> bool:
+	if directions.size() != 2:
+		return false
+
+	var first_direction: Vector2i = directions[0]
+	var second_direction: Vector2i = directions[1]
+	return first_direction.x != second_direction.x and first_direction.y != second_direction.y
+
+
+func _draw_corner_texture(cell_origin: Vector2, directions: Array[Vector2i]) -> void:
+	var has_left: bool = directions.has(Vector2i.LEFT)
+	var has_up: bool = directions.has(Vector2i.UP)
+	var scale_x: float = 1.0 if has_left else -1.0
+	var scale_y: float = -1.0 if has_up else 1.0
+	_draw_transformed_texture(CONER_TEXTURE, cell_origin, 0.0, Vector2(scale_x, scale_y))
+
+
+func _get_line_rotation(directions: Array[Vector2i]) -> float:
+	if directions.has(Vector2i.LEFT) or directions.has(Vector2i.RIGHT):
+		return 0.0
+
+	return PI / 2.0
+
+
+func _draw_rotated_texture(texture: Texture2D, cell_origin: Vector2, rotation: float) -> void:
+	_draw_transformed_texture(texture, cell_origin, rotation, Vector2.ONE)
+
+
+func _draw_transformed_texture(texture: Texture2D, cell_origin: Vector2, rotation: float, scale: Vector2) -> void:
+	var texture_size: Vector2 = texture.get_size()
+	var draw_position: Vector2 = cell_origin + texture_size * 0.5
+	draw_set_transform(draw_position, rotation, scale)
+	draw_texture(texture, -texture_size * 0.5)
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)

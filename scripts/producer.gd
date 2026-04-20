@@ -30,6 +30,7 @@ var _bubble_label: Label
 
 func _ready() -> void:
 	_connect_beat_signal()
+	_prime_initial_output()
 	_refresh_countdown_texture()
 	_refresh_bubble_text()
 	super._ready()
@@ -118,6 +119,19 @@ func _disconnect_beat_signal() -> void:
 func _on_beat_fired(_beat_index: int, _beat_time: float) -> void:
 	# 等当前拍的世界结算完成后再刷新，避免先读到旧状态。
 	call_deferred("_refresh_countdown_texture")
+
+
+func _prime_initial_output() -> void:
+	if _pending_output_cargo_type != "":
+		return
+
+	if not has_remaining_production():
+		return
+
+	# 开局先准备好首个待出料内容，让第一拍能直接出货。
+	_pending_output_cargo_type = get_next_cargo_type()
+	_output_ready_beat = 1
+	mark_produced()
 
 
 func _refresh_countdown_texture() -> void:
