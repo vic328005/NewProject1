@@ -475,9 +475,11 @@ func _apply_input_plan(machine: Machine, plan: Dictionary, item: Item, _beat_ind
 
 	if machine is PressMachine:
 		var press_machine: PressMachine = machine as PressMachine
-		press_machine._pressed_item = item
-		press_machine._press_start_beat = -1
-		press_machine._output_ready_beat = -1
+		# 只有 accept 才把原料存入压塑机；destroy 时机器状态不变。
+		if String(plan.get("action", INPUT_ACTION_REJECT)) != INPUT_ACTION_ACCEPT:
+			return
+
+		press_machine._enter_work_state(item)
 		return
 
 	if machine is Recycler:

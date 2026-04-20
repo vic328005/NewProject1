@@ -8,7 +8,7 @@
       "y": 8,
       "producer": {
         "facing": "RIGHT",
-        "beat_interval": 5,
+        "beat_interval": 3,
         "production_sequence": [
           "A",
           "B",
@@ -54,9 +54,9 @@
     {
       "x": 8,
       "y": 8,
-      "belt": {
-        "input_direction": "RIGHT",
-        "output_direction": "RIGHT",
+      "press_machine": {
+        "facing": "RIGHT",
+        "cargo_type": "B",
         "beat_interval": 2
       }
     },
@@ -106,8 +106,8 @@
       }
     },
     {
-      "x": 9,
-      "y": 11,
+      "x": 8,
+      "y": 13,
       "signal_tower": {
         "max_steps": 10
       }
